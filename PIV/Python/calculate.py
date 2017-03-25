@@ -32,7 +32,6 @@ class VTKWriter():
     Class to write PIV results to VTK format to read in ParaView
     '''
     def __init__(self):
-        print('Initializing class VTKWriter')
         x, y, z = np.mgrid[0:XPixels-1:49j, 0:YPixels-1:49j, 0:1:1j]
         self.shape = x.shape
         pts = np.empty(self.shape+(3,), dtype=float)
@@ -43,7 +42,10 @@ class VTKWriter():
         self.meshq = tvtk.StructuredGrid(dimensions=x.shape, points=pts)
         
     def addScalar(self,S,Sname):
-        print('Func to add ScalarField')
+        '''Func to add ScalarField\n
+        S -> NumPy Array\n
+        Sname -> string for ScalarField name
+        '''
         S2 = S.copy()
         S2 = np.flipud(S2)
         S2 = S2.T
@@ -51,7 +53,9 @@ class VTKWriter():
         self.meshq.point_data.scalars.name = Sname
         
     def addVector(self,u,v,Vname):
-        print('Func to add VectorField')
+        '''Func to add VectorField\n
+        u,v -> NumPy Array\n
+        Vname -> string for VectorField name'''
         vel = np.empty(self.shape + (3,), dtype=float)
         vel[..., 0] = u
         vel[..., 1] = v
@@ -63,9 +67,9 @@ class VTKWriter():
         self.meshq.point_data.vectors.name = Vname
         
     def write(self,FileName):
-        '''Func to write .vtk file. ex: Filename='U.vtk'
+        '''Func to write .vtk file.\n
+        ex: Filename='U.vtk'
         '''
-        print('Func to write .vtk file')
         write_data(self.meshq,FileName)
 
 
