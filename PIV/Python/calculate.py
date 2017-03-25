@@ -32,7 +32,7 @@ class VTKWriter():
     Class to write PIV results to VTK format to read in ParaView
     '''
     def __init__(self):
-        x, y, z = np.mgrid[0:XPixels-1:49j, 0:YPixels-1:49j, 0:1:1j]
+        x, y, z = np.mgrid[0:XPixels:1, 0:YPixels:1, 0:1:1]
         self.shape = x.shape
         pts = np.empty(self.shape+(3,), dtype=float)
         pts[..., 0] = x
