@@ -60,15 +60,25 @@ class SingleFrameData(object):
             tN1 = int(t1[0][0])
             tS1 = float(t1[0][1])
         
-        # - timestamp number from dantec
-        self.timeNumber = np.linspace(tN0,tN1,num=self.Ttot)
-        # - aquisition frequency
-        self.freq = np.round(self.Ttot/(tS1-tS0))
-        # - timestep between measurements
-        self.dt = 1/self.freq
-        # - time stamps in secs with correction (Dantec truncate time info)
-        tS1c = tS0+self.Ttot*self.dt
-        self.timeStamp = np.linspace(tS0,tS1c,num=self.Ttot)
+        if tS1==tS0: #single measurement case (vector statistics) 
+            # - timestamp number from dantec
+            self.timeNumber = np.array([tN0,tN1])
+            # - aquisition frequency
+            self.freq = 1.
+            # - timestep between measurements
+            self.dt = 1
+            # - time stamps in secs with correction (Dantec truncate time info)
+            self.timeStamp = np.array([0,0])
+        else:
+            # - timestamp number from dantec
+            self.timeNumber = np.linspace(tN0,tN1,num=self.Ttot)
+            # - aquisition frequency
+            self.freq = np.round(self.Ttot/(tS1-tS0))
+            # - timestep between measurements
+            self.dt = 1/self.freq
+            # - time stamps in secs with correction (Dantec truncate time info)
+            tS1c = tS0+self.Ttot*self.dt
+            self.timeStamp = np.linspace(tS0,tS1c,num=self.Ttot)    
 
         return 0
     
