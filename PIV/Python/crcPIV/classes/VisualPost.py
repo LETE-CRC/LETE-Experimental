@@ -22,13 +22,22 @@ class Plots(ReadData):
         ReadData.__init__(self,resPath)
         self.extent = [self.xmin,self.xmax,self.ymin,self.ymax]
         self.xlabel = 'Radius [mm]'
-        self.ylabel = r'y [mm]'
+        self.ylabel = r'$z$ [mm]'
         self.interpolation = 'bicubic'
         plt.rc('text', usetex=True)
         plt.rc('font', family='serif')
+        plt.rc('axes',linewidth=2,labelsize=18)
+        plt.rc('axes.spines',top=0,right=0)
         
+        plt.rc('xtick',labelsize=16)
+        plt.rc('xtick.major',size=5,width=2)
+        plt.rc('xtick.minor',visible=1)
+        plt.rc('ytick',labelsize=16)
+        plt.rc('ytick.major',size=5,width=2)
+        plt.rc('ytick.minor',visible=1)
         
-    def singleFramePlot(self,data,dataName,t=0,grid='n',vlim=[],tstamp='n'):
+    def singleFramePlot(self,data,dataName,t=0,grid='n',vlim=[],tstamp='n',
+                        title=None,save=None):
         '''method to plot data map
         '''
         if vlim!=[]:
@@ -38,88 +47,169 @@ class Plots(ReadData):
             vmin = data[:,:,t].min()
             vmax = data[:,:,t].max()
             
-        plt.figure(figsize=(5.5,6),dpi=150)
+        plt.figure(figsize=(4.4,6),dpi=160)
         ax = plt.gca()
         im = ax.imshow(data[:,:,t],cmap='jet',
                        interpolation=self.interpolation,extent=self.extent,
                        vmin=vmin,vmax=vmax)
-        if tstamp!='n':
-            ax.set_title('Time: %8.3f s' %self.timeStamp[t], fontsize=16)
             
-        plt.xlabel(self.xlabel, fontsize=16)
-        plt.ylabel(self.ylabel, fontsize=16)
+        plt.xlabel(self.xlabel)
+        plt.ylabel(self.ylabel)
+        ax.set_title(title, fontsize=16)
         ax.set_xticks(np.arange(self.extent[0],self.extent[1]), minor=True)
         ax.set_yticks(np.arange(self.extent[2],self.extent[3]), minor=True)
-        ax.tick_params(which='minor', bottom=False, left=False)
-        plt.xticks(size=16)
-        plt.yticks(size=16)
+        
+        if tstamp!='n':
+            ax.set_title('Time: %8.3f s' %self.timeStamp[t], fontsize=16)
         
         if grid!='n':
             plt.grid(which='minor',color='k') 
         
         cbar = ax.figure.colorbar(im)
         cbar.ax.tick_params(labelsize=16)
-        cbar.set_label(dataName,size=16,labelpad=15) #,rotation=0,y=1.05
+        cbar.set_label(dataName,size=16,labelpad=5) #,rotation=0,y=1.05
+        plt.tight_layout(pad=0.2)
         
+        if save is not None:
+            plt.savefig(save)
         
-    def plothLine(self,data,y,name,err=np.array([0]),CFD=0,xcorr=0):
-        '''method to plot horizontal lines
+        return 0
+        
+    def plotvLine(self,data,x,yname='y',xname='$z [mm]$',title=None,
+                  err=np.array([0]),yerr=None,CFD=None,ycorr=0,
+                  R=1.,hlim=(None,None),vlim=(None,None),save=None):
+        '''method to plot vertical lines
         CFD = [CFD_x*-1000,CFD_velMag]
         '''
-        dl = self.gethline(data,y)
+        if x > self.xcoord.max() or x < self.xcoord.min():
+            print('plotvLine erro: x fora da regiao de medicao')
         
-        if err.any()!=0:
-            yerr = self.gethline(err[:,:,0],y)
-        else:
-            yerr = 0
-        
-        plt.figure(figsize=(6,6),dpi=150)
-        
-        plt.errorbar((self.xcoord[0,:,0]+xcorr)/50.,dl,yerr=yerr,fmt='o',
-                     ecolor='k',c='k',ms=3,capsize=2,lw=1,label='PIV')
-        
-        if CFD!=0:
-            plt.plot(CFD[0]/50.,CFD[1],'k',label='CFD')
-            plt.legend()
+        else:                
+            dl = self.getvline(data,x)
             
-        plt.xlabel('r/R', size=16)
-        plt.ylabel(name, size=16)
-        plt.xticks(size=16)
-        plt.yticks(size=16)
-        plt.title('$Y = 0.13 [m]$', size=18)
-        plt.xlim(0,1)
-        #plt.ylim(0,30)
+            if err.any()!=0:
+                yerr = self.getvline(err[:,:,0],x)
+            
+            plt.figure(figsize=(6.4,5),dpi=200)
+            plt.errorbar((self.ycoord[:,0,0]+ycorr)/R,dl,yerr=yerr,fmt='o',
+                         ecolor='k',c='k',ms=3,capsize=2,lw=1,label='PIV')
+                
+            plt.xlabel(xname)
+            plt.ylabel(yname)
+            plt.title(title, size=18)
+            plt.xlim(hlim)
+            plt.ylim(vlim)
+            plt.tight_layout(pad=0.5)
+                    
+            if CFD is not None:
+                plt.plot(CFD[0]/R,CFD[1],'k',label='CFD')
+                plt.legend()
+                
+            if save is not None:
+                plt.savefig(save)
+            
         return 0
     
-    def plothLineMultiple(self,data,y,name,err=[],CFD=[],xcorr=0,ylim=0):
+    def plothLine(self,data,y,yname='y',xname='$r [mm]$',title=None,
+                  err=np.array([0]),yerr=None,CFD=None,xcorr=0,
+                  R=1.,hlim=(None,None),vlim=(None,None),save=None):
         '''method to plot horizontal lines
         CFD = [CFD_x*-1000,CFD_velMag]
         '''
-        plt.figure(figsize=(6,6),dpi=150)
+        if y > self.ycoord.max() or y < self.ycoord.min():
+            print('plothLine erro: y fora da regiao de medicao')
+        
+        else:
+            dl = self.gethline(data,y)
+            
+            if err.any()!=0:
+                yerr = self.gethline(err[:,:,0],y)
+            
+            plt.figure(figsize=(6.4,5),dpi=200)
+            plt.errorbar((self.xcoord[0,:,0]+xcorr)/R,dl,yerr=yerr,fmt='o',
+                         ecolor='k',c='k',ms=3,capsize=2,lw=1,label='PIV')
+                
+            plt.xlabel(xname)
+            plt.ylabel(yname)
+            plt.title(title, size=18)
+            plt.xlim(hlim)
+            plt.ylim(vlim)
+            plt.tight_layout(pad=0.5)
+            
+            if CFD is not None:
+                plt.plot(CFD[0]/R,CFD[1],'k',label='CFD')
+                plt.legend()
+                
+            if save is not None:
+                plt.savefig(save)
+            
+        return 0
+    
+    def plothLineMultiple(self,data,y,yname='y',xname='$r [mm]$',title=None,
+                          err=[],yerr=None,CFD=[],R=1.,xcorr=0,
+                          hlim=(None,None),vlim=(None,None),save=None):
+        '''method to plot horizontal lines
+        CFD = [CFD_x*-1000,CFD_velMag]
+        '''
+        plt.figure(figsize=(6.4,5),dpi=200)
         
         for i,d in enumerate(data):
             if CFD!=[]:
-                plt.plot(CFD[i][0]/50.,CFD[i][1],CFD[i][3],
+                plt.plot(CFD[i][0]/R,CFD[i][1],CFD[i][3],
                          label=CFD[i][2],markersize=2)
             
             if err!=[]:
                 yerr = self.gethline(err[i][:,:,0],y)
-            else:
-                yerr = 0
             
             dl = self.gethline(d[0],y)
-            plt.errorbar((self.xcoord[0,:,0]+xcorr)/50.,dl,yerr=yerr,fmt=d[2],
+            plt.errorbar((self.xcoord[0,:,0]+xcorr)/R,dl,yerr=yerr,fmt=d[2],
                          ecolor='k',c='k',ms=3,capsize=2,lw=1,label=d[1])
             
         plt.legend()
-        plt.xlabel('r/R', size=16)
-        plt.ylabel(name, size=16)
-        plt.xticks(size=16)
-        plt.yticks(size=16)
-        plt.title('$Y = 0.13 [m]$', size=18)
-        plt.xlim(0,1)
-        if ylim!=0:
-            plt.ylim(0,70)
+        plt.xlabel(xname)
+        plt.ylabel(yname)
+        plt.title(title, size=18)
+        plt.xlim(hlim)
+        plt.ylim(vlim)
+        plt.tight_layout(pad=0.5)
+        
+        if save is not None:
+            plt.savefig(save)
+            
+        return 0
+    
+    def plotvLineMultiple(self,data,x,yname='y',xname='$z [mm]$',title=None,
+                          err=[],yerr=None,CFD=[],R=1.,ycorr=0,
+                          hlim=(None,None),vlim=(None,None),save=None):
+        '''method to plot horizontal lines
+        CFD = [CFD_x*-1000,CFD_velMag]
+        '''
+        plt.figure(figsize=(6.4,5),dpi=200)
+        
+        for i,d in enumerate(data):
+            
+            if CFD!=[]:
+                plt.plot(CFD[i][0]/R,CFD[i][1],CFD[i][3],
+                         label=CFD[i][2],markersize=2)
+            
+            if err!=[]:
+                yerr = self.getvline(err[i][:,:,0],x)
+            
+            dl = self.getvline(d[0],x)
+            plt.errorbar((self.ycoord[1:-2,0,0]+ycorr)/R,dl,yerr=yerr,fmt=d[2],
+                         ecolor='k',c='k',ms=3,capsize=2,lw=1,label=d[1])
+            
+        plt.legend()
+        plt.xlabel(xname)
+        plt.ylabel(yname)
+        plt.title(title, size=18)
+        plt.xlim(hlim)
+        plt.ylim(vlim)
+        plt.tight_layout(pad=0.5)
+        
+        if save is not None:
+            plt.savefig(save)
+            
         return 0
     
     def gethline(self,data,y):
