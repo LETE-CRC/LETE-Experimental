@@ -9,18 +9,20 @@
 version:0.0 - 02/2019: Helio Villanueva
 version:1.0 - 04/2019: Helio Villanueva
 version:1.1 - 08/2019: Helio Villanueva
+version:2.0 - 05/2020: Helio Villanueva
 """
 
-from classes.ReadData import ReadData
+from termcolor import colored
 import matplotlib.pyplot as plt
 import numpy as np
 
-class Plots(ReadData):
+class Plots(object):
     '''Class for ploting results
     '''
-    def __init__(self,resPath):
-        ReadData.__init__(self,resPath)
-        self.extent = [self.xmin,self.xmax,self.ymin,self.ymax]
+    def __init__(self,velObj):
+        self.xcoord = velObj.xcoord
+        self.ycoord = velObj.ycoord
+        self.extent = [velObj.xmin,velObj.xmax,velObj.ymin,velObj.ymax]
         self.xlabel = 'Radius [mm]'
         self.ylabel = r'$z$ [mm]'
         self.interpolation = 'bicubic'
@@ -40,6 +42,7 @@ class Plots(ReadData):
                         title=None,save=None):
         '''method to plot data map
         '''
+        print(colored('singleFramePlot: ','magenta') + dataName)
         if vlim!=[]:
             vmin = vlim[0]
             vmax = vlim[1]
@@ -71,6 +74,7 @@ class Plots(ReadData):
         plt.tight_layout(pad=0.2)
         
         if save is not None:
+            print(colored(' -> saving: ','magenta') + save)
             plt.savefig(save)
         
         return 0
@@ -81,8 +85,10 @@ class Plots(ReadData):
         '''method to plot vertical lines
         CFD = [CFD_x*-1000,CFD_velMag]
         '''
+        print(colored('plotvLine: ','magenta') + yname)
         if x > self.xcoord.max() or x < self.xcoord.min():
-            print('plotvLine erro: x fora da regiao de medicao')
+            print(colored(' -> plotvLine error: x out of measured bounds','red',
+                          attrs=['bold']))
         
         else:                
             dl = self.getvline(data,x)
@@ -106,6 +112,7 @@ class Plots(ReadData):
                 plt.legend()
                 
             if save is not None:
+                print(colored(' -> saving: ','magenta') + save)
                 plt.savefig(save)
             
         return 0
@@ -116,8 +123,10 @@ class Plots(ReadData):
         '''method to plot horizontal lines
         CFD = [CFD_x*-1000,CFD_velMag]
         '''
+        print(colored('plothLine: ','magenta') + yname)
         if y > self.ycoord.max() or y < self.ycoord.min():
-            print('plothLine erro: y fora da regiao de medicao')
+            print(colored(' -> plotvLine error: y out of measured bounds','red',
+                          attrs=['bold']))
         
         else:
             dl = self.gethline(data,y)
@@ -141,6 +150,7 @@ class Plots(ReadData):
                 plt.legend()
                 
             if save is not None:
+                print(colored(' -> saving: ','magenta') + save)
                 plt.savefig(save)
             
         return 0
@@ -151,6 +161,7 @@ class Plots(ReadData):
         '''method to plot horizontal lines
         CFD = [CFD_x*-1000,CFD_velMag]
         '''
+        print(colored('plothLineMultiple: ','magenta') + yname)
         plt.figure(figsize=(6.4,5),dpi=200)
         
         for i,d in enumerate(data):
@@ -174,6 +185,7 @@ class Plots(ReadData):
         plt.tight_layout(pad=0.5)
         
         if save is not None:
+            print(colored(' -> saving: ','magenta') + save)
             plt.savefig(save)
             
         return 0
@@ -184,6 +196,7 @@ class Plots(ReadData):
         '''method to plot horizontal lines
         CFD = [CFD_x*-1000,CFD_velMag]
         '''
+        print(colored('plotvLineMultiple: ','magenta') + yname)
         plt.figure(figsize=(6.4,5),dpi=200)
         
         for i,d in enumerate(data):
@@ -208,6 +221,7 @@ class Plots(ReadData):
         plt.tight_layout(pad=0.5)
         
         if save is not None:
+            print(colored(' -> saving: ','magenta') + save)
             plt.savefig(save)
             
         return 0
