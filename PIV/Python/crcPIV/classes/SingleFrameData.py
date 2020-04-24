@@ -132,8 +132,8 @@ class SingleFrameData(object):
     def calcCoordProps(self):
         '''Function to calculate properties of the coordinates as object props
         '''
-        self.xscale = (self.xcoord.max() - self.xcoord.min())*0.001/self.cols
-        self.yscale = (self.ycoord.max() - self.ycoord.min())*0.001/self.lins
+        self.dx = (self.xcoord.max() - self.xcoord.min())*0.001/self.cols
+        self.dy = (self.ycoord.max() - self.ycoord.min())*0.001/self.lins
         self.xmin = self.xcoord.min()
         self.xmax = self.xcoord.max()
         self.ymin = self.ycoord.min()
@@ -144,33 +144,35 @@ class SingleFrameData(object):
     
     def printCoordTimeInfos(self):        
         domain = '----------------\n| Domain infos |\n----------------'
-        time = '----------------\n| Time infos |\n----------------'
+        time = '----------------\n|  Time infos  |\n----------------'
         xy = colored('X x Y: ','magenta')
         xcoord = colored('X coordinates [mm]: ','magenta')
         ycoord = colored('Y coordinates [mm]: ','magenta')
-        Lx = colored('Lx: ','magenta')
-        Ly = colored('Ly: ','magenta')
-        xscl = colored('X Scale: ','magenta')
-        yscl = colored('Y Scale: ','magenta')
+        Lxc = colored('Lx: ','magenta')
+        Lyc = colored('Ly: ','magenta')
+        xscl = colored('dX: ','magenta')
+        yscl = colored('dY: ','magenta')
         ntstep = colored('Number of time steps: ','magenta')
-        tstep = colored('TimeStep: ','magenta')
+        tstep = colored('dt: ','magenta')
         afreq = colored('Aquisition Frequency: ','magenta')
         inlast = colored('Initial x last timeStamp: ','magenta')
+        Ttime = colored('Delta t: ','magenta')
         
         print(colored(domain,'blue'))
         print(xy + '%d x %d vectors' %(self.cols,self.lins))
-        print(xcoord + '(%4.3f, %4.3f) '%(self.xmin,self.xmax) + Lx + 
+        print(xcoord + '(%4.3f, %4.3f) '%(self.xmin,self.xmax) + Lxc + 
               '%4.3f [mm]' %self.Lx)
-        print(xscl + '%8.4e m/pixel\n' %self.xscale)
-        print(ycoord + '(%4.3f, %4.3f) '%(self.ymin,self.ymax) + Ly + 
+        print(xscl + '%4.4f mm\n' %(self.dx*1e3))
+        print(ycoord + '(%4.3f, %4.3f) '%(self.ymin,self.ymax) + Lyc + 
               '%4.3f [mm]' %self.Ly)
-        print(yscl + '%8.4e m/pixel\n' %self.yscale)
+        print(yscl + '%4.4f mm\n' %(self.dy*1e3))
         print(colored(time,'blue'))
         print(ntstep + '%d' %self.Ttot)
+        print(afreq + '%5.1f kHz' %(self.freq/1000))
         print(tstep + '%8.4e s' %self.dt)
-        print(afreq + '%5.1f Hz' %self.freq)
         print(inlast + '%2.4f x %2.4f s' %(self.timeStamp[0],
                                            self.timeStamp[-1]))
+        print(Ttime + '%2.4f s'%(self.timeStamp[-1] - self.timeStamp[0]))
         
         return 0
     
