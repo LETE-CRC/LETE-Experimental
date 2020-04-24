@@ -13,6 +13,7 @@ version:1.0 - 04/2019: Helio Villanueva
 import re
 import numpy as np
 from glob import glob
+from termcolor import colored
 
 class SingleFrameData(object):
     '''
@@ -23,7 +24,7 @@ class SingleFrameData(object):
     '''
     def __init__(self,resPath):
         self.resPath = resPath
-        print('Reading files from: ' + str(self.resPath))
+        print(colored('Reading files from: ','magenta') + str(self.resPath))
         self.files = glob(resPath + '/*.dat')
         self.files.sort()
         self.Ttot = len(self.files)
@@ -86,12 +87,12 @@ class SingleFrameData(object):
         '''Function to read each frame for coordinates or velocities
         '''            
         # - Read data
-        data_dantec = np.genfromtxt(self.files[time],skip_header=3,
+        data_tecplot = np.genfromtxt(self.files[time],skip_header=3,
                                     skip_footer=6,usecols=usecols)
         
-        fxt = np.nan_to_num(np.flipud(data_dantec[:,0].reshape((self.lins,
+        fxt = np.nan_to_num(np.flipud(data_tecplot[:,0].reshape((self.lins,
                                       self.cols))))
-        fyt = np.nan_to_num(np.flipud(data_dantec[:,1].reshape((self.lins,
+        fyt = np.nan_to_num(np.flipud(data_tecplot[:,1].reshape((self.lins,
                                       self.cols))))
         
         return fxt,fyt
@@ -106,11 +107,11 @@ class SingleFrameData(object):
         usecols = (varxidx)
         
         # - Read data
-        data_dantec = np.genfromtxt(self.files[time],skip_header=3,
+        data_tecplot = np.genfromtxt(self.files[time],skip_header=3,
                                     skip_footer=6,usecols=usecols)
         
-        varXt = np.nan_to_num(np.flipud(data_dantec.reshape((self.lins,
-                                                             self.cols))))
+        varXt = np.nan_to_num(np.flipud(data_tecplot.reshape((self.lins,
+                                                              self.cols))))
         
         return varXt
     
@@ -142,21 +143,34 @@ class SingleFrameData(object):
         return 0
     
     def printCoordTimeInfos(self):        
-        #print('-------------')
-        print('Bounding Box\n-------------')
-        print('X x Y: %d x %d vectors' %(self.cols,self.lins))
-        print('X coordinates [mm]: (%4.3f, %4.3f) Lx: %4.3f [mm]' %(self.xmin,
-              self.xmax,self.Lx))
-        print('X Scale: %8.4e m/pixel\n' %self.xscale)
-        print('Y coordinates [mm]: (%4.3f, %4.3f) Ly: %4.3f [mm]' %(self.ymin,
-              self.ymax,self.Ly))
-        print('Y Scale: %8.4e m/pixel\n' %self.yscale)
-        print('Time Infos\n-------------')
-        print('Number of time steps: %d' %self.Ttot)
-        print('TimeStep: %8.4e s' %self.dt)
-        print('Aquisition Frequency: %5.1f Hz' %self.freq)
-        print('Initial x last timeStamp: %2.4f x %2.4f s' %(self.timeStamp[0],
-                                                            self.timeStamp[-1]))
+        domain = '----------------\n| Domain infos |\n----------------'
+        time = '----------------\n| Time infos |\n----------------'
+        xy = colored('X x Y: ','magenta')
+        xcoord = colored('X coordinates [mm]: ','magenta')
+        ycoord = colored('Y coordinates [mm]: ','magenta')
+        Lx = colored('Lx: ','magenta')
+        Ly = colored('Ly: ','magenta')
+        xscl = colored('X Scale: ','magenta')
+        yscl = colored('Y Scale: ','magenta')
+        ntstep = colored('Number of time steps: ','magenta')
+        tstep = colored('TimeStep: ','magenta')
+        afreq = colored('Aquisition Frequency: ','magenta')
+        inlast = colored('Initial x last timeStamp: ','magenta')
+        
+        print(colored(domain,'blue'))
+        print(xy + '%d x %d vectors' %(self.cols,self.lins))
+        print(xcoord + '(%4.3f, %4.3f) '%(self.xmin,self.xmax) + Lx + 
+              '%4.3f [mm]' %self.Lx)
+        print(xscl + '%8.4e m/pixel\n' %self.xscale)
+        print(ycoord + '(%4.3f, %4.3f) '%(self.ymin,self.ymax) + Ly + 
+              '%4.3f [mm]' %self.Ly)
+        print(yscl + '%8.4e m/pixel\n' %self.yscale)
+        print(colored(time,'blue'))
+        print(ntstep + '%d' %self.Ttot)
+        print(tstep + '%8.4e s' %self.dt)
+        print(afreq + '%5.1f Hz' %self.freq)
+        print(inlast + '%2.4f x %2.4f s' %(self.timeStamp[0],
+                                           self.timeStamp[-1]))
         
         return 0
     
