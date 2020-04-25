@@ -8,10 +8,12 @@
 ===============================================================================
 version:0.0 - 02/2019: Helio Villanueva
 version:1.0 - 04/2019: Helio Villanueva
+version:2.0 - 05/2020: Helio Villanueva
 """
 
-from classes.SingleFrameData import SingleFrameData, np, re
+from SingleFrameData import SingleFrameData, np, re
 from progressbar import ProgressBar
+from termcolor import colored
 
 class ReadData(SingleFrameData):
     '''
@@ -20,47 +22,33 @@ class ReadData(SingleFrameData):
     '''
     def __init__(self,resPath):
         SingleFrameData.__init__(self,resPath)
-        print(self.variables)
+        print(colored('\nAvailable variables:','magenta'))
+        print(colored(self.variables,'white'))
 
-    
-    def readVar(self,varXname,varYname):
-        '''Method to read the raw data if there is no "var".npy file
-        Return varX,varY
-        '''
-        varXnametratado = re.sub('\[.*\]','',varXname).replace(" ","")
-        varYnametratado = re.sub('\[.*\]','',varYname).replace(" ","")
-        
-        try:
-            varX = np.load(self.resPath + '/' + varXnametratado + '.npy')
-            print('Reading PIV data of %s in python format\n' %varXname)
-            varY = np.load(self.resPath + '/' + varYnametratado + '.npy')
-            
-        except:
-            print('Reading PIV raw files for ' + varXname)
-        
-            varX,varY = self.readFrameVariable(0,varXname,varYname)
-            
-            print('Saving PIV data in python format')
-            np.save(self.resPath + '/' + varXnametratado,varX)
-            np.save(self.resPath + '/' + varYnametratado,varY)
-            
-        return varX,varY
         
     def read1VarTimeSeries(self,varName):
+        '''Method to read one variable\n
+        example:
+            u = velObject.read1VarTimeSeries('U[m/s]')\n
+            uncR = velObject.read1VarTimeSeries('UncR(m/s)[m/s]')
+        '''
         
-        varXnametratado = re.sub('\[.*\]','',varName).replace(" ","")
+        varXnametratado = varName.replace("/","_")
         
-        print('Reading variable: %s' %varXnametratado)
+        print(colored('\nReading variable: ','magenta')+'%s' %varName)
         
         try:
             varX = np.load(self.resPath + '/' + varXnametratado + '.npy')
-            print('Reading PIV data of %s in python format\n' %varName)
+            print(colored(' -> ','magenta') + 
+                  'PIV data of %s read from python file\n' %varName)
             
         except:
-            print('Generating variable matrices')
+            print(colored(' -> ','magenta') + 
+                  'Generating variable matrices for 1st time')
             varX = np.zeros((self.lins, self.cols, self.Ttot))
             
-            print('Reading PIV Frames - Variable components')
+            print(colored(' -> ','magenta') + 
+                  'Reading PIV Frames - Variable components')
             pbar = ProgressBar()
             pbar.start()
             
@@ -77,30 +65,40 @@ class ReadData(SingleFrameData):
                 
             pbar.finish()
             
-            print('Saving PIV data in python format')
+            print(colored(' -> ','magenta') + 
+                  'Saving PIV data in python format')
             np.save(self.resPath + '/' + varXnametratado,varX)
-            print('Done saving')
+            print(colored(' -> ','magenta') + 'Done saving')
         
         return varX
     
     def read2VarTimeSeries(self,varXname,varYname):
+        '''Method to read two variables\n
+        example:
+            u,v = velObject.read2VarTimeSeries('U[m/s]','V[m/s]')
+        '''
         
-        varXnametratado = re.sub('\[.*\]','',varXname).replace(" ","")
-        varYnametratado = re.sub('\[.*\]','',varYname).replace(" ","")
+        varXnametratado = varXname.replace("/","_")
+        varYnametratado = varYname.replace("/","_")
         
-        print('Reading variables: %s & %s' %(varXnametratado,varYnametratado))
+        print(colored('\nReading variables: ','magenta') +
+              '%s & %s' %(varXname,varYname))
         
         try:
             varX = np.load(self.resPath + '/' + varXnametratado + '.npy')
-            print('Reading PIV data of %s in python format\n' %varXname)
             varY = np.load(self.resPath + '/' + varYnametratado + '.npy')
+            print(colored(' -> ','magenta') + 
+                  'PIV data of %s & %s read from python files\n' %(varXname,
+                                                                   varYname))
             
         except:
-            print('Generating variable matrices')
+            print(colored(' -> ','magenta') + 
+                  'Generating variable matrices for 1st time')
             varX = np.zeros((self.lins, self.cols, self.Ttot))
             varY = np.zeros((self.lins, self.cols, self.Ttot))
             
-            print('Reading PIV Frames - Variable components')
+            print(colored(' -> ','magenta') + 
+                  'Reading PIV Frames - Variable components')
             pbar = ProgressBar()
             pbar.start()
             
@@ -118,88 +116,10 @@ class ReadData(SingleFrameData):
                 
             pbar.finish()
             
-            print('Saving PIV data in python format')
+            print(colored(' -> ','magenta') + 
+                  'Saving PIV data in python format')
             np.save(self.resPath + '/' + varXnametratado,varX)
             np.save(self.resPath + '/' + varYnametratado,varY)
-            print('Done saving')
-        
-        return varX,varY
-    
-    def read1UncTimeSeries(self,varXname):
-        
-        varXnametratado = re.sub('\[.*\]','',varXname).replace(" ","")
-        
-        print('Reading variables: %s' %varXnametratado)
-        
-        try:
-            varX = np.load(self.resPath + '/' + 'uncR' + '.npy')
-            print('Reading PIV data of %s in python format\n' %varXname)
-            
-        except:
-            print('Generating variable matrices')
-            varX = np.zeros((self.lins, self.cols, self.Ttot))
-            
-            print('Reading PIV Frames - Variable components')
-            pbar = ProgressBar()
-            pbar.start()
-            
-            ## -- Loop over all files/times
-            for time,name in enumerate(self.files):
-                if time==0:
-                    perc = 0.
-                else:
-                    perc = time/float(self.Ttot)*100.
-                    
-                varX[:,:,time] = self.readFrame1Variable(time,varXname)
-                
-                pbar.update(perc)
-                
-            pbar.finish()
-            
-            print('Saving PIV data in python format')
-            np.save(self.resPath + '/' + 'uncR',varX)
-            print('Done saving')
-        
-        return varX
-    
-    def readUncTimeSeries(self,varXname,varYname):
-        
-        varXnametratado = re.sub('\[.*\]','',varXname).replace(" ","")
-        varYnametratado = re.sub('\[.*\]','',varYname).replace(" ","")
-        
-        print('Reading variables: %s & %s' %(varXnametratado,varYnametratado))
-        
-        try:
-            varX = np.load(self.resPath + '/' + 'uncR' + '.npy')
-            print('Reading PIV data of %s in python format\n' %varXname)
-            varY = np.load(self.resPath + '/' + 'uncRpix' + '.npy')
-            
-        except:
-            print('Generating variable matrices')
-            varX = np.zeros((self.lins, self.cols, self.Ttot))
-            varY = np.zeros((self.lins, self.cols, self.Ttot))
-            
-            print('Reading PIV Frames - Variable components')
-            pbar = ProgressBar()
-            pbar.start()
-            
-            ## -- Loop over all files/times
-            for time,name in enumerate(self.files):
-                if time==0:
-                    perc = 0.
-                else:
-                    perc = time/float(self.Ttot)*100.
-                    
-                varX[:,:,time],varY[:,:,time] = self.readFrameVariable(time,
-                    varXname,varYname)
-                
-                pbar.update(perc)
-                
-            pbar.finish()
-            
-            print('Saving PIV data in python format')
-            np.save(self.resPath + '/' + 'uncR',varX)
-            np.save(self.resPath + '/' + 'uncRpix',varY)
-            print('Done saving')
+            print(colored(' -> ','magenta') + 'Done saving')
         
         return varX,varY
