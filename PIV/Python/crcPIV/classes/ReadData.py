@@ -11,9 +11,9 @@ version:1.0 - 04/2019: Helio Villanueva
 version:2.0 - 05/2020: Helio Villanueva
 """
 
-from SingleFrameData import SingleFrameData, np, re
-from progressbar import ProgressBar
 from termcolor import colored
+from SingleFrameData import SingleFrameData, np
+from progressbar import ProgressBar
 
 class ReadData(SingleFrameData):
     '''
