@@ -11,6 +11,7 @@ version:1.0 - 04/2019: Helio Villanueva
 version:1.1 - 08/2019: Helio Villanueva
 """
 
+from termcolor import colored
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -26,10 +27,13 @@ class baseSeeding(object):
         self.dp = 1
         self.mu = 1
         self.C = 1
+        self.name = 'none'
+        
         
     def graphResponse(self,ymin=0.1):
         '''func/method to plot response vs max frequency measured
         '''
+        print(colored(' -> ','magenta') + 'ploting Response graph')
         resp = np.arange(ymin,1.0,0.001)
         
         fc = self.C/(2*np.pi) * (1./resp - 1)
@@ -52,6 +56,9 @@ class baseSeeding(object):
                      arrowprops=dict(arrowstyle='->'), fontsize=18)
         plt.show()
         
+    def printChoice(self):
+        return print(colored('Seeding used: ','magenta') + self.name)
+        
 class SiO2(baseSeeding):
     '''Class for solid seeding of SiO2
     rho -> particle\n
@@ -60,10 +67,12 @@ class SiO2(baseSeeding):
     '''
     def __init__(self,mu=1.837e-6):
         baseSeeding.__init__(self)
+        self.name = 'SiO2'
         self.rho = 260.
         self.dp = 0.3e-6
         self.mu = mu
         self.C = 18*self.mu/(self.rho*(self.dp**2))
+        self.printChoice()
         
 class Sebacate(baseSeeding):
     '''Class for liquid seeding of Sebacate Oil
@@ -73,7 +82,9 @@ class Sebacate(baseSeeding):
     '''
     def __init__(self,mu=1.837e-6):
         baseSeeding.__init__(self)
+        self.name = 'Sebacate'
         self.rho = 916.
         self.dp = 3e-6
         self.mu = mu
         self.C = 18*self.mu/(self.rho*(self.dp**2))
+        self.printChoice()

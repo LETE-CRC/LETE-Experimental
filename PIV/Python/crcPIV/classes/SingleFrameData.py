@@ -10,10 +10,11 @@ version:0.0 - 02/2019: Helio Villanueva
 version:1.0 - 04/2019: Helio Villanueva
 """
 
+from termcolor import colored
 import re
 import numpy as np
 from glob import glob
-from termcolor import colored
+
 
 class SingleFrameData(object):
     '''
