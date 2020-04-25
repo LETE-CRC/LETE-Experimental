@@ -81,21 +81,21 @@ class Turb(object):
         print(colored('  - ','magenta') + 'calc Velocity gradient tensor')
         # - Fourth order CDS scheme from Ferziger Computational methods for
         # - fluid dynamics on page 44 eq 3.14
-        scheme = np.array([[0,0,0,0,0],[1,-8,0,8,-1],[0,0,0,0,0]])
+        scheme = np.array([[0,0,0,0,0],
+                           [1,-8,0,8,-1],
+                           [0,0,0,0,0]]).reshape(3,5,1)
 
-        U = self.U[:,:,0]
-        V = self.V[:,:,0]
         # - gradients on x direction
-        numUx = signal.convolve(U,scheme, mode='same')
-        numVx = signal.convolve(V,scheme, mode='same')
+        numUx = signal.convolve(self.U,scheme, mode='same')
+        numVx = signal.convolve(self.V,scheme, mode='same')
         # dU/dx
         self.grad11 = numUx/(12*self.dx)
         # dV/dx
         self.grad21 = numVx/(12*self.dx)
         
         # - gradients on y direction
-        numUy = signal.convolve(U,scheme.transpose(), mode='same')
-        numVy = signal.convolve(V,scheme.transpose(), mode='same')
+        numUy = signal.convolve(self.U,scheme.transpose(1,0,2), mode='same')
+        numVy = signal.convolve(self.V,scheme.transpose(1,0,2), mode='same')
         # dU/dy
         self.grad12 = numUy/(12*self.dy)
         # dV/dy
