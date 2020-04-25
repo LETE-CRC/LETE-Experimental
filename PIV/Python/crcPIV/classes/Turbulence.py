@@ -36,13 +36,16 @@ class Turb(object):
         self.U = np.mean(self.u,axis=2, keepdims=True)
         self.V = np.mean(self.v,axis=2, keepdims=True)
         self.magVel = np.sqrt(self.U**2 + self.V**2)
+        print(colored('  - ','magenta') + 'Avg Velocity & Avg Magnitude')
     
         self.calcReStress()
+        print(colored('  - ','magenta') + 'Reynolds Stress tensor')
         self.stdDevU = np.sqrt(self.uu)
         self.stdDevV = np.sqrt(self.vv)
         
         self.calcVelGrad()
-        print(colored('   -> ','magenta') + 'Done')
+        self.calcSij()
+        print(colored(' --> ','magenta') + 'Done\n')
 
         
     def uL(self):
@@ -55,6 +58,7 @@ class Turb(object):
         self.uu = np.mean(self.uL()**2,axis=2, keepdims=True)
         self.vv = np.mean(self.vL()**2,axis=2, keepdims=True)
         self.uv = np.abs(np.mean(self.uL()*self.vL(),axis=2, keepdims=True))
+        
         return 0
     
     def calcK2DPIV(self):
@@ -62,6 +66,7 @@ class Turb(object):
         flow to be locally isotropic
         '''
         K = 3./4 *(self.uu + self.vv)
+        
         return K
     
     def calcKPIV(self):
@@ -73,6 +78,7 @@ class Turb(object):
     def calcVelGrad(self):
         '''calculates the velocity gradient tensor
         '''
+        print(colored('  - ','magenta') + 'calc Velocity gradient tensor')
         # - Fourth order CDS scheme from Ferziger Computational methods for
         # - fluid dynamics on page 44 eq 3.14
         scheme = np.array([[0,0,0,0,0],[1,-8,0,8,-1],[0,0,0,0,0]])
@@ -94,21 +100,24 @@ class Turb(object):
         self.grad12 = numUy/(12*self.dy)
         # dV/dy
         self.grad22 = numVy/(12*self.dy)
+        
         return 0
     
     def calcSij(self):
         '''calculate Sij tensor for 2D2C - S11, S22, S12
         '''
-        S11 = self.grad11
-        S22 = self.grad22
-        S12 = 0.5*(self.grad21 + self.grad12)
+        print(colored('  - ','magenta') + 'calc Sij tensor')
+        self.S11 = self.grad11
+        self.S22 = self.grad22
+        self.S12 = 0.5*(self.grad21 + self.grad12)
 
         SijSij = 2*(self.grad11)**2. + 2*(self.grad22)**2.
         SijSij += 2*(self.grad11*self.grad22) 
         SijSij += 3./2*(self.grad12 + self.grad21)**2
         
-        magSij = np.sqrt(SijSij)
-        return S11, S22, S12, magSij
+        self.magSij = np.sqrt(SijSij)
+        
+        return 0
     
     def calcTauijSmagorinsky(self):
         '''calculate the modeled tauij tensor - SGS tensor based on smagorinsky
@@ -116,13 +125,18 @@ class Turb(object):
         
         Smagorinsky (1963)
         '''
-        S11, S22, S12, magSij = self.calcSij()
+        txt = 'calc modeled tauij SGS tensor based on Smagorinsky method'
+        txt+= ' | Smagorinsky (1963)'
+        print(colored('  -> ','magenta') + txt)
+        
         Cs = 0.17 # Lilly 1967 | Cheng 1997 Cs = 0.12
         delta = self.dx # window size which the vel field is spatially avg
-        const = -(Cs**2.)*(delta**2.)*magSij
-        tau11 = const*S11
-        tau22 = const*S22
-        tau12 = const*S12
+        const = -(Cs**2.)*(delta**2.)*self.magSij
+        tau11 = const*self.S11
+        tau22 = const*self.S22
+        tau12 = const*self.S12
+        print(colored('  --> ','magenta') + 'Done')
+        
         return tau11, tau22, tau12
     
     def calcTauijGradient(self):
@@ -131,29 +145,33 @@ class Turb(object):
         
         Clark et al. (1979)
         '''
+        txt = 'calc modeled tauij SGS tensor based on Gradient method'
+        txt += ' | Clark et al. (1979)'
+        print(colored('  -> ','magenta') + txt)
         delta = self.dx
         const = (delta**2.)/12.
         tau11 = const*(self.grad11**2. + self.grad12**2.)
         tau22 = const*(self.grad21**2. + self.grad22**2.)
         tau12 = const*(self.grad21*self.grad11 + self.grad22*self.grad12)
+        print(colored('  --> ','magenta') + 'Done')
+        
         return tau11, tau22, tau12
     
     def calcEpsilon(self, method='smagorinsky'):
         '''calcluate the dissipation rate using smagorinsky or gradient methods
         '''
-        S11, S22, S12, magSij = self.calcSij()
+        txt = 'calc modeled Dissipation Rate - Epsilon'
+        print(colored(' -> ','magenta') + txt)
         
-        if method=='gradient':
-            print('gradient method')
-            tau11, tau22, tau12 = self.calcTauijGradient()
-        else:
-            print('smagorisky method')
-            tau11, tau22, tau12 = self.calcTauijSmagorinsky()
+        tau11, tau22, tau12 = ( self.calcTauijGradient() if method=='gradient' 
+        else self.calcTauijSmagorinsky() )
             
-        epsilon = tau11*S11 + tau11*S12 + tau12*S22
-        epsilon += tau12*S11 + tau22*S12 + tau22*S22
-        epsilon += 2*tau12*S12
+        epsilon = tau11*self.S11 + tau11*self.S12 + tau12*self.S22
+        epsilon += tau12*self.S11 + tau22*self.S12 + tau22*self.S22
+        epsilon += 2*tau12*self.S12
         epsilon = -200.*epsilon
+        print(colored(' --> ','magenta') + 'Done\n')
+        
         return epsilon
     
     # Calc uncertainties Mean Vel, Reynolds Stress components
