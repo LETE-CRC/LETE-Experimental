@@ -39,3 +39,8 @@ def header():
 def end():
     print(colored(etxt,'green'))
     return 0
+
+def proc(name):
+    print(colored('\n' + 79*'*' + '\n -- ' + name + '\n' + 79*'*' + '\n',
+                  'yellow'))
+    return 0
