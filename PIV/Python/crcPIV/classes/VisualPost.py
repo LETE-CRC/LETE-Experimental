@@ -38,12 +38,12 @@ class Plots(object):
         plt.rc('ytick.major',size=5,width=2)
         plt.rc('ytick.minor',visible=1)
         
-    def singleFramePlot(self,data,dataName,t=0,grid='n',vlim=[],tstamp='n',
-                        title=None,save=None):
+    def singleFramePlot(self,data,dataName,t=0,grid=False,vlim=None,
+                        tstamp=False,title=None,save=None):
         '''method to plot data map
         '''
         print(colored('singleFramePlot: ','magenta') + dataName)
-        if vlim!=[]:
+        if vlim:
             vmin = vlim[0]
             vmax = vlim[1]
         else:
@@ -62,25 +62,25 @@ class Plots(object):
         ax.set_xticks(np.arange(self.extent[0],self.extent[1]), minor=True)
         ax.set_yticks(np.arange(self.extent[2],self.extent[3]), minor=True)
         
-        if tstamp!='n':
+        if tstamp:
             ax.set_title('Time: %8.3f s' %self.timeStamp[t], fontsize=16)
         
-        if grid!='n':
-            plt.grid(which='minor',color='k') 
+        if grid:
+            plt.grid(which='minor',color='k')
         
         cbar = ax.figure.colorbar(im)
         cbar.ax.tick_params(labelsize=16)
         cbar.set_label(dataName,size=16,labelpad=5) #,rotation=0,y=1.05
         plt.tight_layout(pad=0.2)
         
-        if save is not None:
+        if save:
             print(colored(' -> saving: ','magenta') + save)
             plt.savefig(save)
         
         return 0
         
     def plotvLine(self,data,x,yname='y',xname='$z [mm]$',title=None,
-                  err=np.array([0]),yerr=None,CFD=None,ycorr=0,
+                  err=None,yerr=None,CFD=None,ycorr=0,
                   R=1.,hlim=(None,None),vlim=(None,None),save=None):
         '''method to plot vertical lines
         CFD = [CFD_x*-1000,CFD_velMag]
@@ -93,7 +93,7 @@ class Plots(object):
         else:                
             dl = self.getvline(data,x)
             
-            if err.any()!=0:
+            if err:
                 yerr = self.getvline(err[:,:,0],x)
             
             plt.figure(figsize=(6.4,5),dpi=200)
@@ -107,18 +107,18 @@ class Plots(object):
             plt.ylim(vlim)
             plt.tight_layout(pad=0.5)
                     
-            if CFD is not None:
+            if CFD:
                 plt.plot(CFD[0]/R,CFD[1],'k',label='CFD')
                 plt.legend()
                 
-            if save is not None:
+            if save:
                 print(colored(' -> saving: ','magenta') + save)
                 plt.savefig(save)
             
         return 0
     
     def plothLine(self,data,y,yname='y',xname='$r [mm]$',title=None,
-                  err=np.array([0]),yerr=None,CFD=None,xcorr=0,
+                  err=None,yerr=None,CFD=None,xcorr=0,
                   R=1.,hlim=(None,None),vlim=(None,None),save=None):
         '''method to plot horizontal lines
         CFD = [CFD_x*-1000,CFD_velMag]
@@ -131,7 +131,7 @@ class Plots(object):
         else:
             dl = self.gethline(data,y)
             
-            if err.any()!=0:
+            if err:
                 yerr = self.gethline(err[:,:,0],y)
             
             plt.figure(figsize=(6.4,5),dpi=200)
@@ -145,18 +145,18 @@ class Plots(object):
             plt.ylim(vlim)
             plt.tight_layout(pad=0.5)
             
-            if CFD is not None:
+            if CFD:
                 plt.plot(CFD[0]/R,CFD[1],'k',label='CFD')
                 plt.legend()
                 
-            if save is not None:
+            if save:
                 print(colored(' -> saving: ','magenta') + save)
                 plt.savefig(save)
             
         return 0
     
     def plothLineMultiple(self,data,y,yname='y',xname='$r [mm]$',title=None,
-                          err=[],yerr=None,CFD=[],R=1.,xcorr=0,
+                          err=None,yerr=None,CFD=None,R=1.,xcorr=0,
                           hlim=(None,None),vlim=(None,None),save=None):
         '''method to plot horizontal lines
         CFD = [CFD_x*-1000,CFD_velMag]
@@ -165,11 +165,11 @@ class Plots(object):
         plt.figure(figsize=(6.4,5),dpi=200)
         
         for i,d in enumerate(data):
-            if CFD!=[]:
+            if CFD:
                 plt.plot(CFD[i][0]/R,CFD[i][1],CFD[i][3],
                          label=CFD[i][2],markersize=2)
             
-            if err!=[]:
+            if err:
                 yerr = self.gethline(err[i][:,:,0],y)
             
             dl = self.gethline(d[0],y)
@@ -184,14 +184,14 @@ class Plots(object):
         plt.ylim(vlim)
         plt.tight_layout(pad=0.5)
         
-        if save is not None:
+        if save:
             print(colored(' -> saving: ','magenta') + save)
             plt.savefig(save)
             
         return 0
     
     def plotvLineMultiple(self,data,x,yname='y',xname='$z [mm]$',title=None,
-                          err=[],yerr=None,CFD=[],R=1.,ycorr=0,
+                          err=None,yerr=None,CFD=None,R=1.,ycorr=0,
                           hlim=(None,None),vlim=(None,None),save=None):
         '''method to plot horizontal lines
         CFD = [CFD_x*-1000,CFD_velMag]
@@ -201,11 +201,11 @@ class Plots(object):
         
         for i,d in enumerate(data):
             
-            if CFD!=[]:
+            if CFD:
                 plt.plot(CFD[i][0]/R,CFD[i][1],CFD[i][3],
                          label=CFD[i][2],markersize=2)
             
-            if err!=[]:
+            if err:
                 yerr = self.getvline(err[i][:,:,0],x)
             
             dl = self.getvline(d[0],x)
@@ -220,7 +220,7 @@ class Plots(object):
         plt.ylim(vlim)
         plt.tight_layout(pad=0.5)
         
-        if save is not None:
+        if save:
             print(colored(' -> saving: ','magenta') + save)
             plt.savefig(save)
             

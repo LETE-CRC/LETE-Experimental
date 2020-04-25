@@ -145,8 +145,8 @@ plts = Plots(velRaw)
 # - Plot singleFramePlots
 plts.singleFramePlot(turb.magVel,
                      r'$\overline{U}$ $[m/s]$',
-                     t=0, grid='n', tstamp='n', title='Non reactive Flameless',# vlim=[0,120],
-                     save=home+'/Desktop/flss-magU.png')
+                     t=0, grid=0, title='Non reactive Flameless', vlim=[0,120],
+                     save=home+'/Desktop/flss-magU2.png')
 
 
 plt.show()
