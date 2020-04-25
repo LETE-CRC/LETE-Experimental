@@ -10,12 +10,12 @@ version:0.0 - 02/2019: Helio Villanueva
 version:1.0 - 04/2019: Helio Villanueva
 """
 
-from classes.ReadData import ReadData
+from termcolor import colored
 import numpy as np
 from scipy import signal
 
 
-class Turb(ReadData):
+class Turb(object):
     '''class containing turbulence/statistics methods/data
     
     u, v -> instantaneous velocity data
@@ -26,22 +26,23 @@ class Turb(ReadData):
     
     uu, vv, uv -> Reynolds Stress components
     '''
-    def __init__(self,resPath,u,v):
-        print('Initializing turbulence calculations')
-        ReadData.__init__(self,resPath)
+    def __init__(self,velObj,u,v):
+        print(colored(' -> ','magenta')+'Initializing turbulence calculations')
+        self.dx = velObj.dx
+        self.dy = velObj.dy
+
         self.u = u
         self.v = v
         self.U = np.mean(self.u,axis=2, keepdims=True)
         self.V = np.mean(self.v,axis=2, keepdims=True)
         self.magVel = np.sqrt(self.U**2 + self.V**2)
-        self.varU = np.mean(self.uL()**2,axis=2, keepdims=True)
-        self.varV = np.mean(self.vL()**2,axis=2, keepdims=True)
-        self.stdDevU = np.sqrt(self.varU)
-        self.stdDevV = np.sqrt(self.varV)
-        
+    
         self.calcReStress()
+        self.stdDevU = np.sqrt(self.uu)
+        self.stdDevV = np.sqrt(self.vv)
+        
         self.calcVelGrad()
-        print('Done')
+        print(colored('   -> ','magenta') + 'Done')
 
         
     def uL(self):
@@ -51,8 +52,8 @@ class Turb(ReadData):
         return self.v - self.V
     
     def calcReStress(self):
-        self.uu = self.varU #np.mean(self.uL()*self.uL(),axis=2, keepdims=True)
-        self.vv = self.varV #np.mean(self.vL()*self.vL(),axis=2, keepdims=True)
+        self.uu = np.mean(self.uL()**2,axis=2, keepdims=True)
+        self.vv = np.mean(self.vL()**2,axis=2, keepdims=True)
         self.uv = np.abs(np.mean(self.uL()*self.vL(),axis=2, keepdims=True))
         return 0
     
@@ -82,17 +83,17 @@ class Turb(ReadData):
         numUx = signal.convolve(U,scheme, mode='same')
         numVx = signal.convolve(V,scheme, mode='same')
         # dU/dx
-        self.grad11 = numUx/(12*self.xscale)
+        self.grad11 = numUx/(12*self.dx)
         # dV/dx
-        self.grad21 = numVx/(12*self.xscale)
+        self.grad21 = numVx/(12*self.dx)
         
         # - gradients on y direction
         numUy = signal.convolve(U,scheme.transpose(), mode='same')
         numVy = signal.convolve(V,scheme.transpose(), mode='same')
         # dU/dy
-        self.grad12 = numUy/(12*self.yscale)
+        self.grad12 = numUy/(12*self.dy)
         # dV/dy
-        self.grad22 = numVy/(12*self.yscale)
+        self.grad22 = numVy/(12*self.dy)
         return 0
     
     def calcSij(self):
@@ -117,7 +118,7 @@ class Turb(ReadData):
         '''
         S11, S22, S12, magSij = self.calcSij()
         Cs = 0.17 # Lilly 1967 | Cheng 1997 Cs = 0.12
-        delta = self.xscale # window size which the vel field is spatially avg
+        delta = self.dx # window size which the vel field is spatially avg
         const = -(Cs**2.)*(delta**2.)*magSij
         tau11 = const*S11
         tau22 = const*S22
@@ -130,7 +131,7 @@ class Turb(ReadData):
         
         Clark et al. (1979)
         '''
-        delta = self.xscale
+        delta = self.dx
         const = (delta**2.)/12.
         tau11 = const*(self.grad11**2. + self.grad12**2.)
         tau22 = const*(self.grad21**2. + self.grad22**2.)
