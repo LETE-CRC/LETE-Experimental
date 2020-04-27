@@ -35,12 +35,10 @@ class ReadData(SingleFrameData):
         print(colored('\nReading variables: ','magenta') + '%s' %varNames)
         varNameCorr = []
         varList = []
-        #varidxs = []
         
         for vName in varNames:
             vNCorr = vName.replace("/","_")
             varNameCorr.append(vNCorr)
-            #varidxs.append(self.variables.index(vName))
         
             try:
                 varList.append(np.load(self.resPath + '/' + vNCorr + '.npy'))
@@ -49,7 +47,7 @@ class ReadData(SingleFrameData):
                 
             except:
                 print(colored(' -> ','magenta') + 
-                      'Generating variable matrices for 1st time')
+                      'Generating variable matrices for 1st time for %s' %vName)
                 ReadDat=True
         
         
@@ -58,7 +56,6 @@ class ReadData(SingleFrameData):
                   'Reading PIV Frames - Variable components')
             
             varS = np.zeros((self.lins, self.cols, len(varNames), self.Ttot))
-        
             pbar = ProgressBar()
             pbar.start()
             
@@ -73,7 +70,7 @@ class ReadData(SingleFrameData):
                 
                 pbar.update(perc)
                 
-            varS = varS.transpose(1,0,2,3)
+            varS = varS.transpose(2,0,1,3)
             pbar.finish()
             
             print(colored(' -> ','magenta') + 
@@ -83,7 +80,8 @@ class ReadData(SingleFrameData):
                 np.save(self.resPath + '/' + name,varS[i,...])
     
             print(colored(' -> ','magenta') + 'Done saving\n')
+            
         else:
             varS = np.array(varList)
-        
+            
         return varS
