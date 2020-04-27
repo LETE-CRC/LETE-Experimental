@@ -22,6 +22,7 @@ class Plots(object):
     def __init__(self,velObj):
         self.xcoord = velObj.xcoord
         self.ycoord = velObj.ycoord
+        self.timeStamp = velObj.timeStamp
         self.extent = [velObj.xmin,velObj.xmax,velObj.ymin,velObj.ymax]
         self.xlabel = 'Radius [mm]'
         self.ylabel = r'$z$ [mm]'
