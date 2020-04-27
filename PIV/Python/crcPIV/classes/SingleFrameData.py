@@ -53,8 +53,8 @@ class SingleFrameData(object):
             # - get single frame x and y coordinates
             self.xcoord = np.zeros((self.lins,self.cols,1))
             self.ycoord = np.zeros((self.lins,self.cols,1))
-            self.xcoord[:,:,0],self.ycoord[:,:,0] = self.readFrameVariable(0,
-                       "x (mm)[mm]","y (mm)[mm]")
+            self.xcoord[:,:,0],self.ycoord[:,:,0] = self.readFrameNVariables(0,
+                       ['x (mm)[mm]','y (mm)[mm]']).transpose(2,0,1)
             
         with open(self.files[-1]) as f:
             content1 = f.readlines()
@@ -84,51 +84,26 @@ class SingleFrameData(object):
 
         return 0
     
-    def _readFrame_(self,time,usecols):
-        '''Function to read each frame for coordinates or velocities
-        '''            
-        # - Read data
-        data_tecplot = np.genfromtxt(self.files[time],skip_header=3,
-                                    skip_footer=6,usecols=usecols)
-        
-        fxt = np.nan_to_num(np.flipud(data_tecplot[:,0].reshape((self.lins,
-                                      self.cols))))
-        fyt = np.nan_to_num(np.flipud(data_tecplot[:,1].reshape((self.lins,
-                                      self.cols))))
-        
-        return fxt,fyt
-         
-    def readFrame1Variable(self,time,varXname):
+    def readFrameNVariables(self,time,varNames):
         '''readFrame1Variable method
         Reads a specified variable from the .dat file for a specific timestep
         ex: varXname = "Rms U[pix]"
         '''
-        varxidx = self.variables.index(varXname)
-        
-        usecols = (varxidx)
+        varidxs=[]
+        for vName in varNames:
+            varidxs.append(self.variables.index(vName))
+            
+        usecols = tuple(varidxs)
         
         # - Read data
         data_tecplot = np.genfromtxt(self.files[time],skip_header=3,
                                     skip_footer=6,usecols=usecols)
         
-        varXt = np.nan_to_num(np.flipud(data_tecplot.reshape((self.lins,
-                                                              self.cols))))
+        varst = np.nan_to_num(np.flipud(data_tecplot.reshape((self.lins,
+                                                              self.cols,
+                                                              len(usecols)))))
         
-        return varXt
-    
-    def readFrameVariable(self,time,varXname,varYname):
-        '''readFrameVariable method
-        Reads two specified variable from the .dat file for a specific timestep
-        ex: varXname = "Rms U[pix]"
-        '''
-        varxidx = self.variables.index(varXname)
-        varyidx = self.variables.index(varYname)
-        
-        usecols = (varxidx,varyidx)
-        
-        varXt, varYt = self._readFrame_(time,usecols)
-        
-        return varXt,varYt
+        return varst
     
     def calcCoordProps(self):
         '''Function to calculate properties of the coordinates as object props

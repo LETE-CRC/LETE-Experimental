@@ -14,7 +14,7 @@ version:1.1 - 08/2019: Helio Villanueva
 version:2.0 - 05/2020: Helio Villanueva
 """
 
-#from scipy import signal
+from scipy import stats #signal
 import numpy as np
 
 from pathlib import Path
@@ -47,8 +47,7 @@ velPath = home + '/Desktop/PIV/flameless/res'
 velRaw = ReadData(velPath)
 
 ## -- Read PIV data. If python format already present read it instead
-u,v = velRaw.read2VarTimeSeries('U[m/s]','V[m/s]')
-uncR = velRaw.read1VarTimeSeries('UncR(m/s)[m/s]')
+u,v,uncR = velRaw.readVarTimeSeries(['U[m/s]','V[m/s]','UncR(m/s)[m/s]'])
 
 
 ### -- Print infos about coordinates and size of Field-of-View (FOV)
@@ -82,7 +81,10 @@ tracer = SiO2()
 #******************************************************************************
 outFuncs.proc('Turbulence calculations')
 
-turb = Turb(velRaw,u,v)
+z = np.abs(stats.zscore(v))
+v2 = v
+v2[z>3] = 0
+turb = Turb(velRaw,u,v2)
 
 #gradUx, gradVx, gradUy, gradVy = turb.calcVelGrad()
 
@@ -141,12 +143,14 @@ outFuncs.proc('Save result in VTK format')
 outFuncs.proc('Plots')
 
 plts = Plots(velRaw)
+#plts.interpolation = 'None'
 
 # - Plot singleFramePlots
 plts.singleFramePlot(turb.magVel,
                      r'$\overline{U}$ $[m/s]$',
                      t=0, grid=0, title='Non reactive Flameless', vlim=[0,120],
                      save=home+'/Desktop/flss-magU2.png')
+
 
 
 plt.show()
