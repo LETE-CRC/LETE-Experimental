@@ -30,6 +30,7 @@ from VisualPost import Plots, plt
 ##from WriteVTK import WVTK
 import outFuncs
 
+
 #==============================================================================
 outFuncs.header()
 #==============================================================================
@@ -41,7 +42,8 @@ outFuncs.header()
 outFuncs.proc('Read PIV Raw files')
 
 ## -- Path to the PIV velocity results files
-velPath = home + '/Desktop/PIV/flameless/res'
+#velPath = home + '/Desktop/PIV/flameless/res'
+velPath = '/run/media/bandeiranegra/Docs/PIV/flameless/res'
 
 ## -- Instance of class with PIV velocity results infos
 velRaw = ReadData(velPath)
@@ -84,7 +86,8 @@ outFuncs.proc('Turbulence calculations')
 z = np.abs(stats.zscore(v))
 v2 = v
 v2[z>3] = 0
-turb = Turb(velRaw,u,v2)
+
+turb = Turb(velRaw,u,v)
 
 #gradUx, gradVx, gradUy, gradVy = turb.calcVelGrad()
 
@@ -144,16 +147,30 @@ outFuncs.proc('Plots')
 
 plts = Plots(velRaw)
 #plts.interpolation = 'None'
+blank = np.zeros_like(turb.magVel)
 
 # - Plot singleFramePlots
-plts.singleFramePlot(turb.magVel,
-                     r'$\overline{U}$ $[m/s]$',
+plts.singleFramePlot(turb.v,
+                     r'$\overline{U}$ $[m/s]$',cmap='jet',legend=1,
                      t=0, grid=0, title='Non reactive Flameless', vlim=[0,120],
-                     save=home+'/Desktop/flss-magU2.png')
+                     )#save=home+'/Desktop/flss-magU2.png'
 
+
+plts.multiplePlots([1,3],[blank,blank,blank],
+                     [r'mesh',r'glyph',r'streamlines'],title=[' ',' ',' '],
+                     cmap=['Greys','Greys','Greys'],legend=[0,0,0],
+                     grid=[1,0,0],
+                     streaml=[0,0,1],glyph=[0,3,0],objs=[velRaw,turb],
+                     t=0,
+                     save=home+'/Desktop/geom.pdf')
 
 
 plt.show()
+
+# Save video
+dirVideo = home + '/Desktop/videoPIV1/'
+plts.PIVvideo(turb.v,dirVideo,200,'PIV20s.mp4',r'$U$ $[m/s]$',
+              fps=10,vlim=[0,60])
 
 #==============================================================================
 outFuncs.end()
