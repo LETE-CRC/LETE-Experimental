@@ -14,7 +14,11 @@ version:2.0 - 05/2020: Helio Villanueva
 
 from termcolor import colored
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 import numpy as np
+import subprocess
+import glob
+import os
 
 class Plots(object):
     '''Class for ploting results
@@ -39,7 +43,8 @@ class Plots(object):
         plt.rc('ytick.major',size=5,width=2)
         plt.rc('ytick.minor',visible=1)
         
-    def singleFramePlot(self,data,dataName,t=0,grid=False,vlim=None,
+    def singleFramePlot(self,data,dataName,t=0,grid=False,vlim=None,cmap='jet',
+                        streaml=False,glyph=False,objs=False,legend=True,
                         tstamp=False,title=None,save=None):
         '''method to plot data map
         '''
@@ -53,25 +58,42 @@ class Plots(object):
             
         plt.figure(figsize=(4.4,6),dpi=160)
         ax = plt.gca()
-        im = ax.imshow(data[:,:,t],cmap='jet',
+        im = ax.imshow(data[:,:,t],cmap=cmap,
                        interpolation=self.interpolation,extent=self.extent,
                        vmin=vmin,vmax=vmax)
             
-        plt.xlabel(self.xlabel)
-        plt.ylabel(self.ylabel)
+        ax.set_xlabel(self.xlabel)
+        ax.set_ylabel(self.ylabel)
         ax.set_title(title, fontsize=16)
         ax.set_xticks(np.arange(self.extent[0],self.extent[1]), minor=True)
         ax.set_yticks(np.arange(self.extent[2],self.extent[3]), minor=True)
         
         if tstamp:
-            ax.set_title('Time: %8.3f s' %self.timeStamp[t], fontsize=16)
+            ax.set_title('Time: %8.4f s' %(self.timeStamp[t]-self.timeStamp[0]),
+                         fontsize=16)
         
         if grid:
-            plt.grid(which='minor',color='k')
+            ax.grid(which='minor',color='k')
         
-        cbar = ax.figure.colorbar(im)
-        cbar.ax.tick_params(labelsize=16)
-        cbar.set_label(dataName,size=16,labelpad=5) #,rotation=0,y=1.05
+        if streaml:
+            lw = objs[1].magVel/objs[1].magVel.max()
+            lw[lw<0.35] = 0.35
+            ax.streamplot(objs[0].xcoord[:,:,0],
+                          objs[0].ycoord[:,:,0],
+                          objs[1].U[:,:,0],
+                          objs[1].V[:,:,0],
+                          density=0.8,linewidth=lw[:,:,0],color='k',
+                          arrowstyle='->')
+        
+        if glyph:
+            ax.quiver(objs[0].xcoord, objs[0].ycoord,
+                      objs[1].U[:,:,0],objs[1].V[:,:,0])
+        
+        if legend:
+            cbar = ax.figure.colorbar(im)
+            cbar.ax.tick_params(labelsize=16)
+            cbar.set_label(dataName,size=16,labelpad=5) #,rotation=0,y=1.05
+            
         plt.tight_layout(pad=0.2)
         
         if save:
@@ -80,6 +102,95 @@ class Plots(object):
         
         return 0
         
+    def multiplePlots(self,pos,data,dataName,t=0,grid=False,streaml=False,
+                      glyph=False,objs=False,vlim=None,cmap=None,legend=True,
+                      tstamp=False,title=None,save=None):
+        '''method to plot data map
+        '''
+        print(colored('multiplePlots: ','magenta') + str(dataName))
+            
+        fig = plt.figure(figsize=(4.4*pos[1],6*pos[0]),dpi=160)
+        gs = gridspec.GridSpec(nrows=pos[0], ncols=pos[1])#, height_ratios=[1, 1, 2])
+        
+        for i,d in enumerate(gs):
+            if vlim:
+                vmin = vlim[i][0]
+                vmax = vlim[i][1]
+            else:
+                vmin = data[i][:,:,t].min()
+                vmax = data[i][:,:,t].max()
+                
+            ax = fig.add_subplot(d)
+            im = ax.imshow(data[i][:,:,t],cmap=cmap[i],
+                           interpolation=self.interpolation,extent=self.extent,
+                           vmin=vmin,vmax=vmax)
+                
+            if i==0:
+                ax.set_xlabel(self.xlabel)
+                ax.set_ylabel(self.ylabel)
+            ax.set_title(title[i], fontsize=16)
+            ax.set_xticks(np.arange(self.extent[0],self.extent[1]), minor=True)
+            ax.set_yticks(np.arange(self.extent[2],self.extent[3]), minor=True)
+            
+            if tstamp:
+                ax.set_title('Time: %8.3f s' %self.timeStamp[t], fontsize=16)
+            
+            if grid[i]:
+                ax.grid(which='minor',color='k')
+            
+            if streaml[i]:
+                lw = objs[1].magVel/objs[1].magVel.max()
+                lw[lw<0.4] = 0.4
+                ax.streamplot(objs[0].xcoord[:,:,0],
+                              objs[0].ycoord[:,:,0],
+                              objs[1].U[:,:,0],
+                              objs[1].V[:,:,0],
+                              density=0.9,linewidth=lw[:,:,0],color='k',
+                              arrowstyle='->')
+            if glyph[i]:
+                N = glyph[i]
+                X = objs[0].xcoord[::N,::N,0]
+                Y = objs[0].ycoord[::N,::N,0]
+                U = objs[1].U[::N,::N,0]
+                V = objs[1].V[::N,::N,0]
+                ax.quiver(X, Y, U, V,width=0.01,headwidth=3,headlength=7)
+            
+            if legend[i]:
+                cbar = ax.figure.colorbar(im)
+                cbar.ax.tick_params(labelsize=16)
+                cbar.set_label(dataName[i],size=16,labelpad=5) #,rotation=0,y=1.05
+            
+        #plt.tight_layout(pad=0.2)
+        
+        if save:
+            print(colored(' -> saving: ','magenta') + save)
+            plt.savefig(save)
+        
+        return 0
+    
+    def PIVvideo(self,var,dirVideo,ntStep,videoName,varName,fps=10,vlim=None,
+                 cmap='jet'):
+        '''method to generate video from PIV arrays
+        ntStep: number of time steps to save
+        '''
+        if not os.path.exists(dirVideo):
+            os.makedirs(dirVideo)
+        
+        for t in range(ntStep):
+            self.singleFramePlot(var,varName,cmap=cmap,legend=1,
+                             t=t, grid=0, title=' ', tstamp=1, vlim=vlim,
+                             save=dirVideo + '%05d.png' %t)
+            plt.close()
+        
+        os.chdir(dirVideo)
+        subprocess.call(['ffmpeg','-framerate',str(fps),'-i', '%05d.png', '-r',
+                         '60', '-pix_fmt', 'yuv420p',videoName, '-y'])
+        
+        for file_name in glob.glob(dirVideo+"*.png"):
+                os.remove(file_name)    
+        
+        return 0
+    
     def plotvLine(self,data,x,yname='y',xname='$z [mm]$',title=None,
                   err=None,yerr=None,CFD=None,ycorr=0,
                   R=1.,hlim=(None,None),vlim=(None,None),save=None):
