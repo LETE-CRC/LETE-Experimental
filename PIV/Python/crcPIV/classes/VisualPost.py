@@ -10,6 +10,7 @@ version:0.0 - 02/2019: Helio Villanueva
 version:1.0 - 04/2019: Helio Villanueva
 version:1.1 - 08/2019: Helio Villanueva
 version:2.0 - 05/2020: Helio Villanueva
+version:2.1 - 09/2020: Helio Villanueva
 """
 
 from termcolor import colored
@@ -28,6 +29,7 @@ class Plots(object):
         self.ycoord = velObj.ycoord
         self.timeStamp = velObj.timeStamp
         self.extent = [velObj.xmin,velObj.xmax,velObj.ymin,velObj.ymax]
+        self.resPath = velObj.resPath
         self.xlabel = 'Radius [mm]'
         self.ylabel = r'$z$ [mm]'
         self.interpolation = 'bicubic'
@@ -86,8 +88,16 @@ class Plots(object):
                           arrowstyle='->')
         
         if glyph:
-            ax.quiver(objs[0].xcoord, objs[0].ycoord,
-                      objs[1].U[:,:,0],objs[1].V[:,:,0])
+            N = glyph
+            X = objs[0].xcoord[::N,::N,0]
+            Y = objs[0].ycoord[::N,::N,0]
+            if t==0:
+                U = objs[1].U[::N,::N,t]
+                V = objs[1].V[::N,::N,t]
+            else:
+                U = objs[1].u[::N,::N,t]
+                V = objs[1].v[::N,::N,t]
+            ax.quiver(X, Y, U, V,width=0.01,headwidth=3,headlength=7)
         
         if legend:
             cbar = ax.figure.colorbar(im)
@@ -151,8 +161,12 @@ class Plots(object):
                 N = glyph[i]
                 X = objs[0].xcoord[::N,::N,0]
                 Y = objs[0].ycoord[::N,::N,0]
-                U = objs[1].U[::N,::N,0]
-                V = objs[1].V[::N,::N,0]
+                if t==0:
+                    U = objs[1].U[::N,::N,t]
+                    V = objs[1].V[::N,::N,t]
+                else:
+                    U = objs[1].u[::N,::N,t]
+                    V = objs[1].v[::N,::N,t]
                 ax.quiver(X, Y, U, V,width=0.01,headwidth=3,headlength=7)
             
             if legend[i]:
@@ -160,7 +174,7 @@ class Plots(object):
                 cbar.ax.tick_params(labelsize=16)
                 cbar.set_label(dataName[i],size=16,labelpad=5) #,rotation=0,y=1.05
             
-        #plt.tight_layout(pad=0.2)
+#        plt.tight_layout(pad=0.2)
         
         if save:
             print(colored(' -> saving: ','magenta') + save)
@@ -169,7 +183,7 @@ class Plots(object):
         return 0
     
     def PIVvideo(self,var,dirVideo,ntStep,videoName,varName,fps=10,vlim=None,
-                 cmap='jet'):
+                 glyph=False,objs=False,cmap='jet'):
         '''method to generate video from PIV arrays
         ntStep: number of time steps to save
         '''
@@ -179,6 +193,7 @@ class Plots(object):
         for t in range(ntStep):
             self.singleFramePlot(var,varName,cmap=cmap,legend=1,
                              t=t, grid=0, title=' ', tstamp=1, vlim=vlim,
+                             glyph=glyph, objs=objs,
                              save=dirVideo + '%05d.png' %t)
             plt.close()
         
@@ -192,8 +207,8 @@ class Plots(object):
         return 0
     
     def plotvLine(self,data,x,yname='y',xname='$z [mm]$',title=None,
-                  err=None,yerr=None,CFD=None,ycorr=0,
-                  R=1.,hlim=(None,None),vlim=(None,None),save=None):
+                  err=None,yerr=None,CFD=None,ycorr=0,Unorm=None,expFluent=None,
+                  R=1.,U0=1.,hlim=(None,None),vlim=(None,None),save=None):
         '''method to plot vertical lines
         CFD = [CFD_x*-1000,CFD_velMag]
         '''
@@ -208,9 +223,16 @@ class Plots(object):
             if err:
                 yerr = self.getvline(err[:,:,0],x)
             
+            if Unorm:
+                U0 = dl[0]
+                yname='<U>/U0'
+            
+            _x_ = (self.ycoord[1:-2,0,0]+ycorr)/R
+            _y_ = dl[1:-2]/U0
+            
             plt.figure(figsize=(6.4,5),dpi=200)
-            plt.errorbar((self.ycoord[:,0,0]+ycorr)/R,dl,yerr=yerr,fmt='o',
-                         ecolor='k',c='k',ms=3,capsize=2,lw=1,label='PIV')
+            plt.errorbar(_x_,_y_,yerr=yerr,fmt='o',ecolor='k',c='k',ms=3,lw=1,
+                         capsize=2,label='PIV')
                 
             plt.xlabel(xname)
             plt.ylabel(yname)
@@ -220,18 +242,21 @@ class Plots(object):
             plt.tight_layout(pad=0.5)
                     
             if CFD:
-                plt.plot(CFD[0]/R,CFD[1],'k',label='CFD')
+                plt.plot(CFD[0],CFD[1],'k',label='CFD')
                 plt.legend()
                 
             if save:
                 print(colored(' -> saving: ','magenta') + save)
                 plt.savefig(save)
             
+            if expFluent:
+                self.saveFluentXY(_x_/1000,_y_,yname)
+                
         return 0
     
     def plothLine(self,data,y,yname='y',xname='$r [mm]$',title=None,
-                  err=None,yerr=None,CFD=None,xcorr=0,
-                  R=1.,hlim=(None,None),vlim=(None,None),save=None):
+                  err=None,yerr=None,CFD=None,xcorr=0,Unorm=None,expFluent=None,
+                  R=1.,U0=1.,hlim=(None,None),vlim=(None,None),save=None):
         '''method to plot horizontal lines
         CFD = [CFD_x*-1000,CFD_velMag]
         '''
@@ -246,9 +271,16 @@ class Plots(object):
             if err:
                 yerr = self.gethline(err[:,:,0],y)
             
+            if Unorm:
+                U0 = dl.max()
+                yname=r'$<U>/U_0$'
+                
+            _x_ = (self.xcoord[0,:,0]+xcorr)/R
+            _y_ = dl/U0
+            
             plt.figure(figsize=(6.4,5),dpi=200)
-            plt.errorbar((self.xcoord[0,:,0]+xcorr)/R,dl,yerr=yerr,fmt='o',
-                         ecolor='k',c='k',ms=3,capsize=2,lw=1,label='PIV')
+            plt.errorbar(_x_,_y_,yerr=yerr,fmt='o',ecolor='k',c='k',ms=3,lw=1,
+                         capsize=2,label='PIV')
                 
             plt.xlabel(xname)
             plt.ylabel(yname)
@@ -264,6 +296,9 @@ class Plots(object):
             if save:
                 print(colored(' -> saving: ','magenta') + save)
                 plt.savefig(save)
+                
+            if expFluent:
+                self.saveFluentXY(_x_,_y_,yname)
             
         return 0
     
@@ -365,7 +400,7 @@ class Plots(object):
         return vline
     
     def gety_idx(self,value):
-        '''friend method to get closest indexes from y value (horizontal line)
+        '''friend function to get closest indexes from y value (horizontal line)
         also return y values for interpolation
         '''
         d = np.abs(self.ycoord[:,0,0] - value)
@@ -377,7 +412,7 @@ class Plots(object):
         return idxd, idxu, yd, yu
     
     def getx_idx(self,value):
-        '''friend method to get closest indexes from x value (vertical line)
+        '''friend function to get closest indexes from x value (vertical line)
         also return x values for interpolation
         '''
         d = np.abs(self.xcoord[0,:,0] - value)
@@ -387,3 +422,18 @@ class Plots(object):
         xu = self.xcoord[0,idxu,0]
         
         return idxd, idxu, xd, xu
+    
+    def saveFluentXY(self,x,y,var):
+        '''friend function to save XY table file for fluent plot
+        '''
+        file = self.resPath + '/' + var + '.xy'
+        HEADER = '(title \"%s\")\n' %(var)
+        HEADER += '(labels \"Position\" \"%s\")\n\n' %(var)
+        HEADER += '((xy/key/label \"PIV\")'
+        
+        table = np.column_stack((x, y))
+        
+        np.savetxt(file,table,header=HEADER,footer=')\n',delimiter='\t',
+                  fmt=['%.5e','%.5e'],comments='')
+        
+        return 0
