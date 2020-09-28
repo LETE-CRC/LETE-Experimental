@@ -30,6 +30,7 @@ class Turb(object):
         print(colored(' -> ','magenta')+'Initializing turbulence calculations')
         self.dx = velObj.dx
         self.dy = velObj.dy
+        self.dt = velObj.dt
 
         self.u = u
         self.v = v
@@ -38,7 +39,7 @@ class Turb(object):
         self.magVel = np.sqrt(self.U**2 + self.V**2)
         print(colored('  - ','magenta') + 'Avg Velocity & Avg Magnitude')
     
-        self.calcReStress()
+        self.uu, self.vv, self.uv = self.calcReStress()
         print(colored('  - ','magenta') + 'Reynolds Stress tensor')
         self.stdDevU = np.sqrt(self.uu)
         self.stdDevV = np.sqrt(self.vv)
@@ -49,17 +50,23 @@ class Turb(object):
 
         
     def uL(self):
+        '''Method to calculate u velocity fluctuation
+        '''
         return self.u - self.U
     
     def vL(self):
+        '''Method to calculate v velocity fluctuation
+        '''
         return self.v - self.V
     
     def calcReStress(self):
-        self.uu = np.mean(self.uL()**2,axis=2, keepdims=True)
-        self.vv = np.mean(self.vL()**2,axis=2, keepdims=True)
-        self.uv = np.abs(np.mean(self.uL()*self.vL(),axis=2, keepdims=True))
+        '''Method to calculate Reynolds stress components
+        '''
+        uu = np.mean(self.uL()**2,axis=2, keepdims=True)
+        vv = np.mean(self.vL()**2,axis=2, keepdims=True)
+        uv = np.abs(np.mean(self.uL()*self.vL(),axis=2, keepdims=True))
         
-        return 0
+        return uu, vv, uv
     
     def calcK2DPIV(self):
         '''calculates the turbulent kinetic energy for 2D PIV by assuming the
@@ -75,6 +82,27 @@ class Turb(object):
         '''
         return 0
     
+    def calcPSD(self,scale='density'):
+        '''Calculates de Power Spectrum Density in the time coordinate
+        '''
+        print(colored(' -> ','magenta') + 'calc Power Spectrum Density')
+        
+        print(colored('  - ','magenta') + 'u component')
+        freqU, psdU = signal.welch(self.u,1/self.dt, window='nuttall',
+                                   nfft=1024, average='median',scaling=scale)
+        
+        print(colored('  --> ','magenta') + 'Done')
+        
+        print(colored('  - ','magenta') + 'v component')
+        
+        freqV, psdV = signal.welch(self.v,1/self.dt, window='nuttall',
+                                   nfft=1024, average='median',scaling=scale)
+        print(colored('  --> ','magenta') + 'Done')
+        
+        print(colored(' --> ','magenta') + 'Done\n')
+        
+        return freqU, psdU, freqV, psdV
+    
     def calcVelGrad(self):
         '''calculates the velocity gradient tensor
         '''
@@ -82,24 +110,31 @@ class Turb(object):
         # - Fourth order CDS scheme from Ferziger Computational methods for
         # - fluid dynamics on page 44 eq 3.14
         scheme = np.array([[0,0,0,0,0],
-                           [1,-8,0,8,-1],
+                           [-1,8,0,-8,1],
                            [0,0,0,0,0]]).reshape(3,5,1)
+        den = 12
+        
+        # 3rd order BDS
+#        scheme = np.array([[0,0,0,0,0],
+#                           [-1,6,-3,-2,0],
+#                           [0,0,0,0,0]]).reshape(3,5,1)
+#        den = 6
 
         # - gradients on x direction
         numUx = signal.convolve(self.U,scheme, mode='same')
         numVx = signal.convolve(self.V,scheme, mode='same')
         # dU/dx
-        self.grad11 = numUx/(12*self.dx)
+        self.grad11 = numUx/(den*self.dx)
         # dV/dx
-        self.grad21 = numVx/(12*self.dx)
+        self.grad21 = numVx/(den*self.dx)
         
         # - gradients on y direction
-        numUy = signal.convolve(self.U,scheme.transpose(1,0,2), mode='same')
-        numVy = signal.convolve(self.V,scheme.transpose(1,0,2), mode='same')
+        numUy = signal.convolve(self.U,-scheme.transpose(1,0,2), mode='same')
+        numVy = signal.convolve(self.V,-scheme.transpose(1,0,2), mode='same')
         # dU/dy
-        self.grad12 = numUy/(12*self.dy)
+        self.grad12 = numUy/(den*self.dy)
         # dV/dy
-        self.grad22 = numVy/(12*self.dy)
+        self.grad22 = numVy/(den*self.dy)
         
         return 0
     
