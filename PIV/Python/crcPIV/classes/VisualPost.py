@@ -46,8 +46,9 @@ class Plots(object):
         plt.rc('ytick.minor',visible=1)
         
     def singleFramePlot(self,data,dataName,t=0,grid=False,vlim=None,cmap='jet',
-                        streaml=False,glyph=False,objs=False,legend=True,
-                        tstamp=False,title=None,save=None):
+                        streaml=False,glyph=False,glyphcolor='k',contour=False,
+                        objs=False,legend=True,tstamp=False,title=None,
+                        save=None):
         '''method to plot data map
         '''
         print(colored('singleFramePlot: ','magenta') + dataName)
@@ -77,27 +78,45 @@ class Plots(object):
         if grid:
             ax.grid(which='minor',color='k')
         
+        # define X,Y,U,V variables for use in different plots
+        X = objs[0].xcoord[:,:,0]
+        Y = objs[0].ycoord[:,:,0]
+        if t==0:
+            U = objs[1].U[:,:,t]
+            V = objs[1].V[:,:,t]
+        else:
+            U = objs[1].u[:,:,t]
+            V = objs[1].v[:,:,t]
+            
+        # streamlines
         if streaml:
             lw = objs[1].magVel/objs[1].magVel.max()
             lw[lw<0.35] = 0.35
-            ax.streamplot(objs[0].xcoord[:,:,0],
-                          objs[0].ycoord[:,:,0],
-                          objs[1].U[:,:,0],
-                          objs[1].V[:,:,0],
+            ax.streamplot(X,Y,U,V,
                           density=0.8,linewidth=lw[:,:,0],color='k',
                           arrowstyle='->')
-        
+        # vector field
         if glyph:
             N = glyph
-            X = objs[0].xcoord[::N,::N,0]
-            Y = objs[0].ycoord[::N,::N,0]
-            if t==0:
-                U = objs[1].U[::N,::N,t]
-                V = objs[1].V[::N,::N,t]
-            else:
-                U = objs[1].u[::N,::N,t]
-                V = objs[1].v[::N,::N,t]
-            ax.quiver(X, Y, U, V,width=0.01,headwidth=3,headlength=7)
+            Xq = X[::N,::N]
+            Yq = Y[::N,::N]
+            Uq = U[::N,::N]
+            Vq = V[::N,::N]
+            Q = ax.quiver(Xq,Yq,Uq,Vq,color=glyphcolor,width=0.01,headwidth=3,
+                          headlength=7)
+            ax.quiverkey(Q, 0.7, 0.98, 100, r'$100 \frac{m}{s}$',
+                         color=glyphcolor, labelpos='E', coordinates='figure')
+        
+        # contour lines
+        if contour:
+            #Xc = contour[0].xcoord[:,:,0]
+            #Yc = contour[0].ycoord[:,:,0]
+            T = contour[0][:,:,t]
+            origin = 'upper'
+            levels = contour[1]
+            CS = ax.contour(T,levels,colors=('k',),linewidths=(2,),
+                  origin=origin,extent=self.extent)
+            ax.clabel(CS, fmt='%2.1f', colors='w', fontsize=14)
         
         if legend:
             cbar = ax.figure.colorbar(im)
@@ -113,8 +132,8 @@ class Plots(object):
         return 0
         
     def multiplePlots(self,pos,data,dataName,t=0,grid=False,streaml=False,
-                      glyph=False,objs=False,vlim=None,cmap=None,legend=True,
-                      tstamp=False,title=None,save=None):
+                      glyph=False,glyphcolor='k',objs=False,vlim=None,
+                      cmap=None,legend=True,tstamp=False,title=None,save=None):
         '''method to plot data map
         '''
         print(colored('multiplePlots: ','magenta') + str(dataName))
@@ -148,33 +167,40 @@ class Plots(object):
             if grid[i]:
                 ax.grid(which='minor',color='k')
             
+            # define X,Y,U,V variables for use in different plots
+            X = objs[0].xcoord[:,:,0]
+            Y = objs[0].ycoord[:,:,0]
+            if t==0:
+                U = objs[1].U[:,:,t]
+                V = objs[1].V[:,:,t]
+            else:
+                U = objs[1].u[:,:,t]
+                V = objs[1].v[:,:,t]
+            
+            # streamlines
             if streaml[i]:
                 lw = objs[1].magVel/objs[1].magVel.max()
                 lw[lw<0.4] = 0.4
-                ax.streamplot(objs[0].xcoord[:,:,0],
-                              objs[0].ycoord[:,:,0],
-                              objs[1].U[:,:,0],
-                              objs[1].V[:,:,0],
-                              density=0.9,linewidth=lw[:,:,0],color='k',
-                              arrowstyle='->')
+                ax.streamplot(X,Y,U,V,density=0.9,linewidth=lw[:,:,0],
+                              color='k',arrowstyle='->')
+            # vector field
             if glyph[i]:
                 N = glyph[i]
-                X = objs[0].xcoord[::N,::N,0]
-                Y = objs[0].ycoord[::N,::N,0]
-                if t==0:
-                    U = objs[1].U[::N,::N,t]
-                    V = objs[1].V[::N,::N,t]
-                else:
-                    U = objs[1].u[::N,::N,t]
-                    V = objs[1].v[::N,::N,t]
-                ax.quiver(X, Y, U, V,width=0.01,headwidth=3,headlength=7)
-            
+                Xq = X[::N,::N]
+                Yq = Y[::N,::N]
+                Uq = U[::N,::N]
+                Vq = V[::N,::N]
+                Q = ax.quiver(Xq, Yq, Uq, Vq,color=glyphcolor,width=0.01,
+                              headwidth=3,headlength=7)
+                ax.quiverkey(Q, 0.7, 0.98, 100, r'$100 \frac{m}{s}$',
+                         color=glyphcolor, labelpos='E', coordinates='figure')
+                
             if legend[i]:
                 cbar = ax.figure.colorbar(im)
                 cbar.ax.tick_params(labelsize=16)
                 cbar.set_label(dataName[i],size=16,labelpad=5) #,rotation=0,y=1.05
             
-#        plt.tight_layout(pad=0.2)
+        plt.tight_layout(pad=0.2)
         
         if save:
             print(colored(' -> saving: ','magenta') + save)
@@ -183,7 +209,7 @@ class Plots(object):
         return 0
     
     def PIVvideo(self,var,dirVideo,ntStep,videoName,varName,fps=10,vlim=None,
-                 glyph=False,objs=False,cmap='jet'):
+                 glyph=False,glyphcolor='k',objs=False,cmap='jet'):
         '''method to generate video from PIV arrays
         ntStep: number of time steps to save
         '''
@@ -193,7 +219,7 @@ class Plots(object):
         for t in range(ntStep):
             self.singleFramePlot(var,varName,cmap=cmap,legend=1,
                              t=t, grid=0, title=' ', tstamp=1, vlim=vlim,
-                             glyph=glyph, objs=objs,
+                             glyph=glyph,glyphcolor=glyphcolor,objs=objs,
                              save=dirVideo + '%05d.png' %t)
             plt.close()
         
