@@ -79,8 +79,10 @@ class Plots(object):
             ax.grid(which='minor',color='k')
         
         # define X,Y,U,V variables for use in different plots
-        X = objs[0].xcoord[:,:,0]
-        Y = objs[0].ycoord[:,:,0]
+        if objs:
+            X = objs[0].xcoord[:,:,0]
+            Y = objs[0].ycoord[:,:,0]
+            
         if t==0:
             U = objs[1].U[:,:,t]
             V = objs[1].V[:,:,t]
@@ -168,8 +170,9 @@ class Plots(object):
                 ax.grid(which='minor',color='k')
             
             # define X,Y,U,V variables for use in different plots
-            X = objs[0].xcoord[:,:,0]
-            Y = objs[0].ycoord[:,:,0]
+            if objs:
+                X = objs[0].xcoord[:,:,0]
+                Y = objs[0].ycoord[:,:,0]
             if t==0:
                 U = objs[1].U[:,:,t]
                 V = objs[1].V[:,:,t]
