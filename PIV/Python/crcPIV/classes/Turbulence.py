@@ -210,3 +210,36 @@ class Turb(object):
         return epsilon
     
     # Calc uncertainties Mean Vel, Reynolds Stress components
+    def calcUncMean(self,uncR,k=3):
+        '''calculate uncertainty of mean velocity field
+        Parameters
+        ----------
+        uncR : array with uncertainties in m/s from dantec.
+        k : coverage factor -> 1=68% ; 2=95%; 3=99% for gaussian distribution
+        *check dantec help
+        Returns
+        -------
+        Uncertainty of mean velocity field.
+
+        '''
+        varFluct = self.calcMagTij(self.uu, self.vv, self.uv, self.uv)
+        sigmaU = varFluct + np.mean(k*uncR**2,axis=2,keepdims=True)
+        
+        return np.sqrt(sigmaU/len(uncR[0,0,:]))
+    
+    def calcUncRe(self,uncR,Ruu,k=3):
+        '''calculate uncertainty for Reynolds Stresses
+        Parameters
+        ----------
+        uncR : array with uncertainties in m/s from dantec.
+        Ruu : Reynolds Stress component
+        k : coverage factor -> 1=68% ; 2=95%; 3=99% for gaussian distribution
+        *check dantec help
+        '''
+        #varFluct = self.calcMagTij(self.uu, self.vv, self.uv, self.uv)
+        uncRmean = np.mean(k*uncR,axis=2,keepdims=True)
+        sigmaUu = np.sqrt(np.mean((k*uncR-uncRmean)**2,axis=2,keepdims=True))
+        C = np.sqrt( 1 + ( sigmaUu**2/(2*uncRmean**2) ) )
+        URuu = np.sqrt(Ruu**2 + ( np.sqrt(2)*sigmaUu*uncRmean*C )**2 )
+        URuu *= np.sqrt(2/len(uncR[0,0,:]))
+        return URuu
