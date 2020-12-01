@@ -138,6 +138,15 @@ class Turb(object):
         
         return 0
     
+    def calcMagTij(self,T11,T22,T12,T21):
+        '''calculate magnitude of Tij tensor for 2D2C
+        '''
+        TijTij = 2*(T11)**2. + 2*(T22)**2.
+        TijTij += 2*(T11*T22) 
+        TijTij += 3./2*(T12 + T21)**2
+        
+        return np.sqrt(TijTij)
+    
     def calcSij(self):
         '''calculate Sij tensor for 2D2C - S11, S22, S12
         '''
@@ -145,12 +154,9 @@ class Turb(object):
         self.S11 = self.grad11
         self.S22 = self.grad22
         self.S12 = 0.5*(self.grad21 + self.grad12)
-
-        SijSij = 2*(self.grad11)**2. + 2*(self.grad22)**2.
-        SijSij += 2*(self.grad11*self.grad22) 
-        SijSij += 3./2*(self.grad12 + self.grad21)**2
         
-        self.magSij = np.sqrt(SijSij)
+        self.magSij = self.calcMagTij(self.grad11, self.grad22,
+                                      self.grad12, self.grad21)
         
         return 0
     
@@ -243,3 +249,4 @@ class Turb(object):
         URuu = np.sqrt(Ruu**2 + ( np.sqrt(2)*sigmaUu*uncRmean*C )**2 )
         URuu *= np.sqrt(2/len(uncR[0,0,:]))
         return URuu
+    
