@@ -79,20 +79,19 @@ class Plots(object):
             ax.grid(which='minor',color='k')
         
         # define X,Y,U,V variables for use in different plots
-        if objs:
-            X = objs[0].xcoord[:,:,0]
-            Y = objs[0].ycoord[:,:,0]
+        X = self.xcoord[:,:,0]
+        Y = self.ycoord[:,:,0]
             
         if t==0:
-            U = objs[1].U[:,:,t]
-            V = objs[1].V[:,:,t]
+            U = objs[0].U[:,:,t]
+            V = objs[0].V[:,:,t]
         else:
-            U = objs[1].u[:,:,t]
-            V = objs[1].v[:,:,t]
+            U = objs[0].u[:,:,t]
+            V = objs[0].v[:,:,t]
             
         # streamlines
         if streaml:
-            lw = objs[1].magVel/objs[1].magVel.max()
+            lw = objs[0].magVel/objs[0].magVel.max()
             lw[lw<0.35] = 0.35
             ax.streamplot(X,Y,U,V,
                           density=0.8,linewidth=lw[:,:,0],color='k',
@@ -170,19 +169,19 @@ class Plots(object):
                 ax.grid(which='minor',color='k')
             
             # define X,Y,U,V variables for use in different plots
-            if objs:
-                X = objs[0].xcoord[:,:,0]
-                Y = objs[0].ycoord[:,:,0]
+            X = self.xcoord[:,:,0]
+            Y = self.ycoord[:,:,0]
+            
             if t==0:
-                U = objs[1].U[:,:,t]
-                V = objs[1].V[:,:,t]
+                U = objs[0].U[:,:,t]
+                V = objs[0].V[:,:,t]
             else:
-                U = objs[1].u[:,:,t]
-                V = objs[1].v[:,:,t]
+                U = objs[0].u[:,:,t]
+                V = objs[0].v[:,:,t]
             
             # streamlines
             if streaml[i]:
-                lw = objs[1].magVel/objs[1].magVel.max()
+                lw = objs[0].magVel/objs[0].magVel.max()
                 lw[lw<0.4] = 0.4
                 ax.streamplot(X,Y,U,V,density=0.9,linewidth=lw[:,:,0],
                               color='k',arrowstyle='->')
@@ -235,9 +234,10 @@ class Plots(object):
         
         return 0
     
-    def plotvLine(self,data,x,yname='y',xname='$z [mm]$',title=None,
-                  err=None,yerr=None,CFD=None,ycorr=0,Unorm=None,expFluent=None,
-                  R=1.,U0=1.,hlim=(None,None),vlim=(None,None),save=None):
+    def plotvLine(self,data,x,yname='y',xname='$z [mm]$',title=None,err=None,
+                  xout=(None,None),yerr=None,CFD=None,ycorr=0,Unorm=None,R=1.,
+                  U0=1.,hlim=(None,None),vlim=(None,None),
+                  expFluent=None,save=None):
         '''method to plot vertical lines
         CFD = [CFD_x*-1000,CFD_velMag]
         '''
@@ -249,15 +249,19 @@ class Plots(object):
         else:                
             dl = self.getvline(data,x)
             
-            if err:
-                yerr = self.getvline(err[:,:,0],x)
+            if xout:
+                start = xout[0]
+                stop = xout[1]
+            
+            if err.any():
+                yerr = self.getvline(err[:,:,0],x)[start:stop]
             
             if Unorm:
                 U0 = dl[0]
                 yname='<U>/U0'
             
-            _x_ = (self.ycoord[1:-2,0,0]+ycorr)/R
-            _y_ = dl[1:-2]/U0
+            _x_ = (self.ycoord[start:stop,0,0]+ycorr)/R
+            _y_ = dl[start:stop]/U0
             
             plt.figure(figsize=(6.4,5),dpi=200)
             plt.errorbar(_x_,_y_,yerr=yerr,fmt='o',ecolor='k',c='k',ms=3,lw=1,
