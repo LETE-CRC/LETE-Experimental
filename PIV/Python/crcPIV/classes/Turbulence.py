@@ -26,7 +26,7 @@ class Turb(object):
     
     uu, vv, uv -> Reynolds Stress components
     '''
-    def __init__(self,velObj,u,v):
+    def __init__(self,velObj,u,v,gradScheme='4thCDS'):
         print(colored(' -> ','magenta')+'Initializing turbulence calculations')
         self.dx = velObj.dx
         self.dy = velObj.dy
@@ -44,7 +44,7 @@ class Turb(object):
         self.stdDevU = np.sqrt(self.uu)
         self.stdDevV = np.sqrt(self.vv)
         
-        self.calcVelGrad()
+        self.calcVelGrad(gradScheme=gradScheme)
         self.calcSij()
         print(colored(' --> ','magenta') + 'Done\n')
 
@@ -103,22 +103,28 @@ class Turb(object):
         
         return freqU, psdU, freqV, psdV
     
-    def calcVelGrad(self):
+    def calcVelGrad(self,gradScheme):
         '''calculates the velocity gradient tensor
         '''
         print(colored('  - ','magenta') + 'calc Velocity gradient tensor')
-        # - Fourth order CDS scheme from Ferziger Computational methods for
-        # - fluid dynamics on page 44 eq 3.14
-        scheme = np.array([[0,0,0,0,0],
-                           [-1,8,0,-8,1],
-                           [0,0,0,0,0]]).reshape(3,5,1)
-        den = 12
-        
-        # 3rd order BDS
-#        scheme = np.array([[0,0,0,0,0],
-#                           [-1,6,-3,-2,0],
-#                           [0,0,0,0,0]]).reshape(3,5,1)
-#        den = 6
+        if gradScheme=='4thCDS':
+            print(colored('   - ','magenta') + 'using ' + gradScheme)
+            # - Fourth order CDS scheme from Ferziger Computational methods for
+            # - fluid dynamics on page 44 eq 3.14
+            scheme = np.array([[0,0,0,0,0],
+                               [-1,8,0,-8,1],
+                               [0,0,0,0,0]]).reshape(3,5,1)
+            den = 12
+        elif gradScheme=='3rdBDS':
+            print(colored('   - ','magenta') + 'using ' + gradScheme)
+            # 3rd order BDS
+            scheme = np.array([[0,0,0,0,0],
+                              [-1,6,-3,-2,0],
+                              [0,0,0,0,0]]).reshape(3,5,1)
+            den = 6
+        else:
+            print("Unrecognized gradient scheme. '4thCDS' or '3rdBDS'")
+            
 
         # - gradients on x direction
         numUx = signal.convolve(self.U,scheme, mode='same')
