@@ -123,7 +123,7 @@ class Turb(object):
                               [0,0,0,0,0]]).reshape(3,5,1)
             den = 6
         else:
-            print("Unrecognized gradient scheme. '4thCDS' or '3rdBDS'")
+            print("ERROR: Unrecognized gradient scheme. '4thCDS' or '3rdBDS'")
             
 
         # - gradients on x direction
