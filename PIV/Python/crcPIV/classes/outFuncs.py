@@ -31,7 +31,7 @@ etxt += '\n END crcPIV\n'
 etxt += 79*'=' + '\n'
 
 def header():
-    os.system('clear')
+    os.system('cls' if os.name == 'nt' else 'clear')
     print(colored(htxt,'green'))
     
     return 0
