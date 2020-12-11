@@ -35,15 +35,15 @@ class Plots(object):
         self.interpolation = 'bicubic'
         plt.rc('text', usetex=True)
         plt.rc('font', family='serif')
-        plt.rc('axes',linewidth=2,labelsize=18)
+        plt.rc('axes',linewidth=3,labelsize=24)
         plt.rc('axes.spines',top=0,right=0)
         
-        plt.rc('xtick',labelsize=16)
+        plt.rc('xtick',labelsize=20)
         plt.rc('xtick.major',size=5,width=2)
-        plt.rc('xtick.minor',visible=1)
-        plt.rc('ytick',labelsize=16)
+        plt.rc('xtick.minor',visible=1,size=3,width=1)
+        plt.rc('ytick',labelsize=20)
         plt.rc('ytick.major',size=5,width=2)
-        plt.rc('ytick.minor',visible=1)
+        plt.rc('ytick.minor',visible=1,size=3,width=1)
         
     def singleFramePlot(self,data,dataName,t=0,grid=False,vlim=None,cmap='jet',
                         streaml=False,glyph=False,glyphcolor='k',contour=False,
@@ -67,13 +67,13 @@ class Plots(object):
             
         ax.set_xlabel(self.xlabel)
         ax.set_ylabel(self.ylabel)
-        ax.set_title(title, fontsize=16)
+        ax.set_title(title, fontsize=20)
         ax.set_xticks(np.arange(self.extent[0],self.extent[1]), minor=True)
         ax.set_yticks(np.arange(self.extent[2],self.extent[3]), minor=True)
         
         if tstamp:
             ax.set_title('Time: %8.4f s' %(self.timeStamp[t]-self.timeStamp[0]),
-                         fontsize=16)
+                         fontsize=20)
         
         if grid:
             ax.grid(which='minor',color='k')
@@ -122,7 +122,7 @@ class Plots(object):
         if legend:
             cbar = ax.figure.colorbar(im)
             cbar.ax.tick_params(labelsize=16)
-            cbar.set_label(dataName,size=16,labelpad=5) #,rotation=0,y=1.05
+            cbar.set_label(dataName,size=20,labelpad=5) #,rotation=0,y=1.05
             
         plt.tight_layout(pad=0.2)
         
@@ -158,12 +158,12 @@ class Plots(object):
             if i==0:
                 ax.set_xlabel(self.xlabel)
                 ax.set_ylabel(self.ylabel)
-            ax.set_title(title[i], fontsize=16)
+            ax.set_title(title[i], fontsize=20)
             ax.set_xticks(np.arange(self.extent[0],self.extent[1]), minor=True)
             ax.set_yticks(np.arange(self.extent[2],self.extent[3]), minor=True)
             
             if tstamp:
-                ax.set_title('Time: %8.3f s' %self.timeStamp[t], fontsize=16)
+                ax.set_title('Time: %8.3f s' %self.timeStamp[t], fontsize=20)
             
             if grid[i]:
                 ax.grid(which='minor',color='k')
@@ -200,7 +200,7 @@ class Plots(object):
             if legend[i]:
                 cbar = ax.figure.colorbar(im)
                 cbar.ax.tick_params(labelsize=16)
-                cbar.set_label(dataName[i],size=16,labelpad=5) #,rotation=0,y=1.05
+                cbar.set_label(dataName[i],size=20,labelpad=5) #,rotation=0,y=1.05
             
         plt.tight_layout(pad=0.2)
         
