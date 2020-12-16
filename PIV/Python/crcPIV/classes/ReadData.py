@@ -14,6 +14,7 @@ version:2.0 - 05/2020: Helio Villanueva
 from termcolor import colored
 from SingleFrameData import SingleFrameData, np
 from progressbar import ProgressBar
+import json
 
 class ReadData(SingleFrameData):
     '''
@@ -85,3 +86,29 @@ class ReadData(SingleFrameData):
             varS = np.array(varList)
             
         return varS
+    
+    def readReduced(self):
+        '''Method to read processed/reduced data
+        '''
+        print(colored(' -> ','magenta') + 'Reading PIV reduced data')
+        
+        with open(self.resPath + '/ReducedData.txt','r') as fr:
+            lista = json.load(fr)
+        
+        for i,l in enumerate(lista):
+            lista[i] = np.array(l)
+            
+        return lista
+    
+    def saveReduced(self,lista=[]):
+        '''Method to save processed/reduced data
+        '''
+        print(colored(' -> ','magenta') + 'Saving PIV reduced data')
+        
+        for i,l in enumerate(lista):
+            lista[i] = l.tolist()
+
+        with open(self.resPath + '/ReducedData.txt','w') as fw:
+            json.dump(lista,fw)
+            
+        return 0
