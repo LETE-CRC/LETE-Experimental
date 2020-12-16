@@ -234,8 +234,11 @@ class Turb(object):
         Uncertainty of mean velocity field.
 
         '''
+        print(colored(' -> ','magenta') + 'calc uncertainty of mean velocity')
+        
         varFluct = self.calcMagTij(self.uu, self.vv, self.uv, self.uv)
         sigmaU = varFluct + np.mean(k*uncR**2,axis=2,keepdims=True)
+        print(colored(' --> ','magenta') + 'Done\n')
         
         return np.sqrt(sigmaU/len(uncR[0,0,:]))
     
@@ -248,11 +251,15 @@ class Turb(object):
         k : coverage factor -> 1=68% ; 2=95%; 3=99% for gaussian distribution
         *check dantec help
         '''
-        #varFluct = self.calcMagTij(self.uu, self.vv, self.uv, self.uv)
+        txt = 'calc uncertainty of Reynolds Stress component'
+        print(colored(' -> ','magenta') + txt)
+        
         uncRmean = np.mean(k*uncR,axis=2,keepdims=True)
         sigmaUu = np.sqrt(np.mean((k*uncR-uncRmean)**2,axis=2,keepdims=True))
         C = np.sqrt( 1 + ( sigmaUu**2/(2*uncRmean**2) ) )
         URuu = np.sqrt(Ruu**2 + ( np.sqrt(2)*sigmaUu*uncRmean*C )**2 )
         URuu *= np.sqrt(2/len(uncR[0,0,:]))
+        print(colored(' --> ','magenta') + 'Done\n')
+        
         return URuu
     
