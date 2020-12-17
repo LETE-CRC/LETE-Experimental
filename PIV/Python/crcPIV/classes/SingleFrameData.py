@@ -6,14 +6,14 @@
    Escola Politecnica da USP - EPUSP
    
 ===============================================================================
-version:0.0 - 02/2019: Helio Villanueva
-version:1.0 - 04/2019: Helio Villanueva
+version:2.1 - 12/2020: Helio Villanueva
 """
 
 from termcolor import colored
 import re
 import numpy as np
 from glob import glob
+import json
 
 
 class SingleFrameData(object):
@@ -36,51 +36,69 @@ class SingleFrameData(object):
     def getInfos(self):
         '''Initialization function for initial infos from files
         '''
-        with open(self.files[0]) as f:
-            content0 = f.readlines()
-            # - get size of data as n pixels (lins,cols)
-            size = re.findall(r'I=(.*) J=(.*) ',content0[2])
-            self.cols = int(size[0][0])
-            self.lins = int(size[0][1])
-            # - get timestamp on frame 0
-            t0 = re.findall(r'#(.*), (.*).+s',content0[-1])
-            tN0 = int(t0[0][0])
-            tS0 = float(t0[0][1])
-            # - get variables available from file
-            self.variables = re.findall(r'"(.*)"',content0[1])
-            self.variables = self.variables[0].split('" "')
-            
-            # - get single frame x and y coordinates
-            self.xcoord = np.zeros((self.lins,self.cols,1))
-            self.ycoord = np.zeros((self.lins,self.cols,1))
-            self.xcoord[:,:,0],self.ycoord[:,:,0] = self.readFrameNVariables(0,
-                       ['x (mm)[mm]','y (mm)[mm]']).transpose(2,0,1)
-            
-        with open(self.files[-1]) as f:
-            content1 = f.readlines()
-            t1 = re.findall(r'#(.*), (.*).+s',content1[-1])
-            tN1 = int(t1[0][0])
-            tS1 = float(t1[0][1])
+        try:
+            with open(self.resPath + '/basicInfos.txt','r') as fr:
+                lista = json.load(fr)
+                
+            self.cols,self.lins,self.variables = lista[0],lista[1],lista[2]
+            self.xcoord,self.ycoord = np.array(lista[3]),np.array(lista[4])
+            self.timeNumber = np.array(lista[5])
+            self.freq,self.dt = lista[6],lista[7]
+            self.timeStamp = np.array(lista[8])
         
-        if tS1==tS0: #single measurement case (vector statistics) 
-            # - timestamp number from dantec
-            self.timeNumber = np.array([tN0,tN1])
-            # - aquisition frequency
-            self.freq = 1.
-            # - timestep between measurements
-            self.dt = 1
-            # - time stamps in secs with correction (Dantec truncate time info)
-            self.timeStamp = np.array([0,0])
-        else:
-            # - timestamp number from dantec
-            self.timeNumber = np.linspace(tN0,tN1,num=self.Ttot)
-            # - aquisition frequency
-            self.freq = np.round(self.Ttot/(tS1-tS0))
-            # - timestep between measurements
-            self.dt = 1/self.freq
-            # - time stamps in secs with correction (Dantec truncate time info)
-            tS1c = tS0+self.Ttot*self.dt
-            self.timeStamp = np.linspace(tS0,tS1c,num=self.Ttot)    
+        except:
+            with open(self.files[0]) as f:
+                content0 = f.readlines()
+                # - get size of data as n pixels (lins,cols)
+                size = re.findall(r'I=(.*) J=(.*) ',content0[2])
+                self.cols = int(size[0][0])
+                self.lins = int(size[0][1])
+                # - get timestamp on frame 0
+                t0 = re.findall(r'#(.*), (.*).+s',content0[-1])
+                tN0 = int(t0[0][0])
+                tS0 = float(t0[0][1])
+                # - get variables available from file
+                self.variables = re.findall(r'"(.*)"',content0[1])
+                self.variables = self.variables[0].split('" "')
+                
+                # - get single frame x and y coordinates
+                self.xcoord = np.zeros((self.lins,self.cols,1))
+                self.ycoord = np.zeros((self.lins,self.cols,1))
+                self.xcoord[:,:,0],self.ycoord[:,:,0] = self.readFrameNVariables(0,
+                           ['x (mm)[mm]','y (mm)[mm]']).transpose(2,0,1)
+                
+            with open(self.files[-1]) as f:
+                content1 = f.readlines()
+                t1 = re.findall(r'#(.*), (.*).+s',content1[-1])
+                tN1 = int(t1[0][0])
+                tS1 = float(t1[0][1])
+            
+            if tS1==tS0: #single measurement case (vector statistics) 
+                # - timestamp number from dantec
+                self.timeNumber = np.array([tN0,tN1])
+                # - aquisition frequency
+                self.freq = 1.
+                # - timestep between measurements
+                self.dt = 1
+                # - time stamps in secs with correction (Dantec truncate time info)
+                self.timeStamp = np.array([0,0])
+            else:
+                # - timestamp number from dantec
+                self.timeNumber = np.linspace(tN0,tN1,num=self.Ttot)
+                # - aquisition frequency
+                self.freq = np.round(self.Ttot/(tS1-tS0))
+                # - timestep between measurements
+                self.dt = 1/self.freq
+                # - time stamps in secs with correction (Dantec truncate time info)
+                tS1c = tS0+self.Ttot*self.dt
+                self.timeStamp = np.linspace(tS0,tS1c,num=self.Ttot)
+            
+            # - save basic Infos in txt file
+            l = [self.cols,self.lins,self.variables,self.xcoord.tolist(),
+                 self.ycoord.tolist(),self.timeNumber.tolist(),self.freq,self.dt,
+                 self.timeStamp.tolist()]
+            with open(self.resPath + '/basicInfos.txt','w') as fw:
+                json.dump(l,fw)  
 
         return 0
     

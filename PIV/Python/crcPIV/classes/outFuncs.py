@@ -6,7 +6,7 @@
    Escola Politecnica da USP - EPUSP
    
 ===============================================================================
-version:2.0 - 05/2020: Helio Villanueva
+version:2.1 - 12/2020: Helio Villanueva
 """
 
 from termcolor import colored
@@ -15,7 +15,8 @@ import os
 versions = ['version:0.0 - 02/2019: Helio Villanueva',
             'version:1.0 - 04/2019: Helio Villanueva',
             'version:1.1 - 08/2019: Helio Villanueva',
-            'version:2.0 - 05/2020: Helio Villanueva']
+            'version:2.0 - 05/2020: Helio Villanueva',
+            'version:2.1 - 12/2020: Helio Villanueva']
 
 
 htxt = '\n' + 79*'='
@@ -31,7 +32,7 @@ etxt += '\n END crcPIV\n'
 etxt += 79*'=' + '\n'
 
 def header():
-    os.system('clear')
+    os.system('cls' if os.name == 'nt' else 'clear')
     print(colored(htxt,'green'))
     
     return 0

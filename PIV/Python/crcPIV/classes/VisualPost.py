@@ -6,11 +6,7 @@
    Escola Politecnica da USP - EPUSP
    
 ===============================================================================
-version:0.0 - 02/2019: Helio Villanueva
-version:1.0 - 04/2019: Helio Villanueva
-version:1.1 - 08/2019: Helio Villanueva
-version:2.0 - 05/2020: Helio Villanueva
-version:2.1 - 09/2020: Helio Villanueva
+version:2.1 - 12/2020: Helio Villanueva
 """
 
 from termcolor import colored
@@ -35,19 +31,19 @@ class Plots(object):
         self.interpolation = 'bicubic'
         plt.rc('text', usetex=True)
         plt.rc('font', family='serif')
-        plt.rc('axes',linewidth=2,labelsize=18)
+        plt.rc('axes',linewidth=3,labelsize=24)
         plt.rc('axes.spines',top=0,right=0)
         
-        plt.rc('xtick',labelsize=16)
+        plt.rc('xtick',labelsize=20)
         plt.rc('xtick.major',size=5,width=2)
-        plt.rc('xtick.minor',visible=1)
-        plt.rc('ytick',labelsize=16)
+        plt.rc('xtick.minor',visible=1,size=3,width=1)
+        plt.rc('ytick',labelsize=20)
         plt.rc('ytick.major',size=5,width=2)
-        plt.rc('ytick.minor',visible=1)
+        plt.rc('ytick.minor',visible=1,size=3,width=1)
         
     def singleFramePlot(self,data,dataName,t=0,grid=False,vlim=None,cmap='jet',
                         streaml=False,glyph=False,glyphcolor='k',contour=False,
-                        objs=False,legend=True,tstamp=False,title=None,
+                        velComp=None,legend=True,tstamp=False,title=None,
                         save=None):
         '''method to plot data map
         '''
@@ -67,31 +63,37 @@ class Plots(object):
             
         ax.set_xlabel(self.xlabel)
         ax.set_ylabel(self.ylabel)
-        ax.set_title(title, fontsize=16)
+        ax.set_title(title, fontsize=20)
         ax.set_xticks(np.arange(self.extent[0],self.extent[1]), minor=True)
         ax.set_yticks(np.arange(self.extent[2],self.extent[3]), minor=True)
         
         if tstamp:
             ax.set_title('Time: %8.4f s' %(self.timeStamp[t]-self.timeStamp[0]),
-                         fontsize=16)
+                         fontsize=20)
         
         if grid:
             ax.grid(which='minor',color='k')
-        
-        # define X,Y,U,V variables for use in different plots
-        X = self.xcoord[:,:,0]
-        Y = self.ycoord[:,:,0]
+
+        # define X,Y,U,V variables for use in different plots if required
+        if streaml or glyph:
+            if velComp==None:
+                txt = 'ERROR: velComp=[U,V] needed to use streaml or glyph'
+                print(colored(txt,'red'))
+                
+            X = self.xcoord[:,:,0]
+            Y = self.ycoord[:,:,0]
+            magVel = np.sqrt(velComp[0]**2 + velComp[1]**2)
             
-        if t==0:
-            U = objs[0].U[:,:,t]
-            V = objs[0].V[:,:,t]
-        else:
-            U = objs[0].u[:,:,t]
-            V = objs[0].v[:,:,t]
+            try:
+                U = velComp[0][:,:,t]
+                V = velComp[1][:,:,t]
+            except:
+                U = velComp[0][:,:,0]
+                V = velComp[1][:,:,0]
             
         # streamlines
         if streaml:
-            lw = objs[0].magVel/objs[0].magVel.max()
+            lw = magVel/magVel.max()
             lw[lw<0.35] = 0.35
             ax.streamplot(X,Y,U,V,
                           density=0.8,linewidth=lw[:,:,0],color='k',
@@ -105,13 +107,12 @@ class Plots(object):
             Vq = V[::N,::N]
             Q = ax.quiver(Xq,Yq,Uq,Vq,color=glyphcolor,width=0.01,headwidth=3,
                           headlength=7)
-            ax.quiverkey(Q, 0.7, 0.98, 100, r'$100 \frac{m}{s}$',
+            ax.quiverkey(Q, 0.7, 0.98, magVel.max(),
+                         r'$%3.0f \frac{m}{s}$' %magVel.max(),
                          color=glyphcolor, labelpos='E', coordinates='figure')
         
         # contour lines
         if contour:
-            #Xc = contour[0].xcoord[:,:,0]
-            #Yc = contour[0].ycoord[:,:,0]
             T = contour[0][:,:,t]
             origin = 'upper'
             levels = contour[1]
@@ -122,7 +123,7 @@ class Plots(object):
         if legend:
             cbar = ax.figure.colorbar(im)
             cbar.ax.tick_params(labelsize=16)
-            cbar.set_label(dataName,size=16,labelpad=5) #,rotation=0,y=1.05
+            cbar.set_label(dataName,size=20,labelpad=5) #,rotation=0,y=1.05
             
         plt.tight_layout(pad=0.2)
         
@@ -133,7 +134,7 @@ class Plots(object):
         return 0
         
     def multiplePlots(self,pos,data,dataName,t=0,grid=False,streaml=False,
-                      glyph=False,glyphcolor='k',objs=False,vlim=None,
+                      glyph=False,glyphcolor='k',velComp=False,vlim=None,
                       cmap=None,legend=True,tstamp=False,title=None,save=None):
         '''method to plot data map
         '''
@@ -158,30 +159,36 @@ class Plots(object):
             if i==0:
                 ax.set_xlabel(self.xlabel)
                 ax.set_ylabel(self.ylabel)
-            ax.set_title(title[i], fontsize=16)
+            ax.set_title(title[i], fontsize=20)
             ax.set_xticks(np.arange(self.extent[0],self.extent[1]), minor=True)
             ax.set_yticks(np.arange(self.extent[2],self.extent[3]), minor=True)
             
             if tstamp:
-                ax.set_title('Time: %8.3f s' %self.timeStamp[t], fontsize=16)
+                ax.set_title('Time: %8.3f s' %self.timeStamp[t], fontsize=20)
             
             if grid[i]:
                 ax.grid(which='minor',color='k')
             
-            # define X,Y,U,V variables for use in different plots
-            X = self.xcoord[:,:,0]
-            Y = self.ycoord[:,:,0]
-            
-            if t==0:
-                U = objs[0].U[:,:,t]
-                V = objs[0].V[:,:,t]
-            else:
-                U = objs[0].u[:,:,t]
-                V = objs[0].v[:,:,t]
+            # define X,Y,U,V variables for use in different plots if required
+            if streaml or glyph:
+                if velComp==None:
+                    txt = 'ERROR: velComp=[U,V] needed to use streaml or glyph'
+                    print(colored(txt,'red'))
+                    
+                X = self.xcoord[:,:,0]
+                Y = self.ycoord[:,:,0]
+                magVel = np.sqrt(velComp[0]**2 + velComp[1]**2)
+                    
+                try:
+                    U = velComp[0][:,:,t]
+                    V = velComp[1][:,:,t]
+                except:
+                    U = velComp[0][:,:,0]
+                    V = velComp[1][:,:,0]
             
             # streamlines
             if streaml[i]:
-                lw = objs[0].magVel/objs[0].magVel.max()
+                lw = magVel/magVel.max()
                 lw[lw<0.4] = 0.4
                 ax.streamplot(X,Y,U,V,density=0.9,linewidth=lw[:,:,0],
                               color='k',arrowstyle='->')
@@ -194,13 +201,14 @@ class Plots(object):
                 Vq = V[::N,::N]
                 Q = ax.quiver(Xq, Yq, Uq, Vq,color=glyphcolor,width=0.01,
                               headwidth=3,headlength=7)
-                ax.quiverkey(Q, 0.7, 0.98, 100, r'$100 \frac{m}{s}$',
-                         color=glyphcolor, labelpos='E', coordinates='figure')
+                ax.quiverkey(Q, 0.7, 0.98, magVel.max(),
+                             r'$%3.0f \frac{m}{s}$' %magVel.max(),labelpos='E',
+                             color=glyphcolor, coordinates='figure')
                 
             if legend[i]:
                 cbar = ax.figure.colorbar(im)
                 cbar.ax.tick_params(labelsize=16)
-                cbar.set_label(dataName[i],size=16,labelpad=5) #,rotation=0,y=1.05
+                cbar.set_label(dataName[i],size=20,labelpad=5) #,rotation=0,y=1.05
             
         plt.tight_layout(pad=0.2)
         
@@ -468,5 +476,12 @@ class Plots(object):
         
         np.savetxt(file,table,header=HEADER,footer=')\n',delimiter='\t',
                   fmt=['%.5e','%.5e'],comments='')
+        
+        return 0
+    
+    def show(self):
+        '''Friend function to show plots without need to load plt
+        '''
+        plt.show()
         
         return 0
