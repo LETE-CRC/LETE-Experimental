@@ -104,10 +104,12 @@ outFuncs.proc('Plots')
 
 plots = Plots(velRaw)
 
-plots.singleFramePlot(vv,
+plots.singleFramePlot(V,
                      r'$\overline{U}$ $[m/s]$',cmap='jet',legend=1,
-                     t=0, grid=0, title='Non reactive Flameless', vlim=[0,120],
-                     )
+                     t=0, grid=0, title='Flameless', vlim=[0,52],
+                     velComp=[U,V],glyph=2)
+
+plots.show()
 
 #==============================================================================
 outFuncs.end()

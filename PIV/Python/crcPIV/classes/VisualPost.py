@@ -482,3 +482,10 @@ class Plots(object):
                   fmt=['%.5e','%.5e'],comments='')
         
         return 0
+    
+    def show(self):
+        '''Friend function to show plots without need to load plt
+        '''
+        plt.show()
+        
+        return 0
