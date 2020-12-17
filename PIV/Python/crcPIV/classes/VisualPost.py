@@ -47,7 +47,7 @@ class Plots(object):
         
     def singleFramePlot(self,data,dataName,t=0,grid=False,vlim=None,cmap='jet',
                         streaml=False,glyph=False,glyphcolor='k',contour=False,
-                        objs=False,legend=True,tstamp=False,title=None,
+                        velComp=None,legend=True,tstamp=False,title=None,
                         save=None):
         '''method to plot data map
         '''
@@ -77,21 +77,27 @@ class Plots(object):
         
         if grid:
             ax.grid(which='minor',color='k')
-        
-        # define X,Y,U,V variables for use in different plots
-        X = self.xcoord[:,:,0]
-        Y = self.ycoord[:,:,0]
+
+        # define X,Y,U,V variables for use in different plots if required
+        if streaml or glyph:
+            if velComp==None:
+                txt = 'ERROR: velComp=[U,V] needed to use streaml or glyph'
+                print(colored(txt,'red'))
+                
+            X = self.xcoord[:,:,0]
+            Y = self.ycoord[:,:,0]
+            magVel = np.sqrt(velComp[0]**2 + velComp[1]**2)
             
-        if t==0:
-            U = objs[0].U[:,:,t]
-            V = objs[0].V[:,:,t]
-        else:
-            U = objs[0].u[:,:,t]
-            V = objs[0].v[:,:,t]
+            try:
+                U = velComp[0][:,:,t]
+                V = velComp[1][:,:,t]
+            except:
+                U = velComp[0][:,:,0]
+                V = velComp[1][:,:,0]
             
         # streamlines
         if streaml:
-            lw = objs[0].magVel/objs[0].magVel.max()
+            lw = magVel/magVel.max()
             lw[lw<0.35] = 0.35
             ax.streamplot(X,Y,U,V,
                           density=0.8,linewidth=lw[:,:,0],color='k',
@@ -105,13 +111,12 @@ class Plots(object):
             Vq = V[::N,::N]
             Q = ax.quiver(Xq,Yq,Uq,Vq,color=glyphcolor,width=0.01,headwidth=3,
                           headlength=7)
-            ax.quiverkey(Q, 0.7, 0.98, 100, r'$100 \frac{m}{s}$',
+            ax.quiverkey(Q, 0.7, 0.98, magVel.max(),
+                         r'$%3.0f \frac{m}{s}$' %magVel.max(),
                          color=glyphcolor, labelpos='E', coordinates='figure')
         
         # contour lines
         if contour:
-            #Xc = contour[0].xcoord[:,:,0]
-            #Yc = contour[0].ycoord[:,:,0]
             T = contour[0][:,:,t]
             origin = 'upper'
             levels = contour[1]
@@ -133,7 +138,7 @@ class Plots(object):
         return 0
         
     def multiplePlots(self,pos,data,dataName,t=0,grid=False,streaml=False,
-                      glyph=False,glyphcolor='k',objs=False,vlim=None,
+                      glyph=False,glyphcolor='k',velComp=False,vlim=None,
                       cmap=None,legend=True,tstamp=False,title=None,save=None):
         '''method to plot data map
         '''
@@ -168,20 +173,26 @@ class Plots(object):
             if grid[i]:
                 ax.grid(which='minor',color='k')
             
-            # define X,Y,U,V variables for use in different plots
-            X = self.xcoord[:,:,0]
-            Y = self.ycoord[:,:,0]
-            
-            if t==0:
-                U = objs[0].U[:,:,t]
-                V = objs[0].V[:,:,t]
-            else:
-                U = objs[0].u[:,:,t]
-                V = objs[0].v[:,:,t]
+            # define X,Y,U,V variables for use in different plots if required
+            if streaml or glyph:
+                if velComp==None:
+                    txt = 'ERROR: velComp=[U,V] needed to use streaml or glyph'
+                    print(colored(txt,'red'))
+                    
+                X = self.xcoord[:,:,0]
+                Y = self.ycoord[:,:,0]
+                magVel = np.sqrt(velComp[0]**2 + velComp[1]**2)
+                    
+                try:
+                    U = velComp[0][:,:,t]
+                    V = velComp[1][:,:,t]
+                except:
+                    U = velComp[0][:,:,0]
+                    V = velComp[1][:,:,0]
             
             # streamlines
             if streaml[i]:
-                lw = objs[0].magVel/objs[0].magVel.max()
+                lw = magVel/magVel.max()
                 lw[lw<0.4] = 0.4
                 ax.streamplot(X,Y,U,V,density=0.9,linewidth=lw[:,:,0],
                               color='k',arrowstyle='->')
@@ -194,8 +205,9 @@ class Plots(object):
                 Vq = V[::N,::N]
                 Q = ax.quiver(Xq, Yq, Uq, Vq,color=glyphcolor,width=0.01,
                               headwidth=3,headlength=7)
-                ax.quiverkey(Q, 0.7, 0.98, 100, r'$100 \frac{m}{s}$',
-                         color=glyphcolor, labelpos='E', coordinates='figure')
+                ax.quiverkey(Q, 0.7, 0.98, magVel.max(),
+                             r'$%3.0f \frac{m}{s}$' %magVel.max(),labelpos='E',
+                             color=glyphcolor, coordinates='figure')
                 
             if legend[i]:
                 cbar = ax.figure.colorbar(im)
