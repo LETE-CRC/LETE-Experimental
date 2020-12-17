@@ -6,9 +6,7 @@
    Escola Politecnica da USP - EPUSP
    
 ===============================================================================
-version:0.0 - 02/2019: Helio Villanueva
-version:1.0 - 04/2019: Helio Villanueva
-version:1.1 - 08/2019: Helio Villanueva
+version:2.1 - 12/2020: Helio Villanueva
 """
 
 from termcolor import colored
