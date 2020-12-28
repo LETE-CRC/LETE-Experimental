@@ -45,6 +45,7 @@ class SingleFrameData(object):
             self.timeNumber = np.array(lista[5])
             self.freq,self.dt = lista[6],lista[7]
             self.timeStamp = np.array(lista[8])
+            self.Ttot = lista[9]
         
         except:
             with open(self.files[0]) as f:
@@ -96,7 +97,7 @@ class SingleFrameData(object):
             # - save basic Infos in txt file
             l = [self.cols,self.lins,self.variables,self.xcoord.tolist(),
                  self.ycoord.tolist(),self.timeNumber.tolist(),self.freq,self.dt,
-                 self.timeStamp.tolist()]
+                 self.timeStamp.tolist(),self.Ttot]
             with open(self.resPath + '/basicInfos.txt','w') as fw:
                 json.dump(l,fw)  
 
