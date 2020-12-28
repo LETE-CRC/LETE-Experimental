@@ -12,6 +12,9 @@ version:2.1 - 12/2020: Helio Villanueva
 from termcolor import colored
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+import matplotlib.colors as colors
+from matplotlib.ticker import (MultipleLocator, FormatStrFormatter,
+                               AutoMinorLocator)
 import numpy as np
 import subprocess
 import glob
@@ -44,7 +47,7 @@ class Plots(object):
     def singleFramePlot(self,data,dataName,t=0,grid=False,vlim=None,cmap='jet',
                         streaml=False,glyph=False,glyphcolor='k',contour=False,
                         velComp=None,legend=True,tstamp=False,title=None,
-                        save=None):
+                        norm=None,save=None):
         '''method to plot data map
         '''
         print(colored('singleFramePlot: ','magenta') + dataName)
@@ -58,7 +61,8 @@ class Plots(object):
         plt.figure(figsize=(4.4,6),dpi=160)
         ax = plt.gca()
         im = ax.imshow(data[:,:,t],cmap=cmap,
-                       interpolation=self.interpolation,extent=self.extent,
+                       interpolation=self.interpolation,norm=norm,
+                       extent=self.extent,
                        vmin=vmin,vmax=vmax)
             
         ax.set_xlabel(self.xlabel)
@@ -135,13 +139,20 @@ class Plots(object):
         
     def multiplePlots(self,pos,data,dataName,t=0,grid=False,streaml=False,
                       glyph=False,glyphcolor='k',velComp=False,vlim=None,
-                      cmap=None,legend=True,tstamp=False,title=None,save=None):
+                      norm=None,cmap=None,normCoord=1,
+                      legend=True,tstamp=False,title=None,
+                      save=None):
         '''method to plot data map
         '''
         print(colored('multiplePlots: ','magenta') + str(dataName))
             
-        fig = plt.figure(figsize=(4.4*pos[1],6*pos[0]),dpi=160)
+        fig = plt.figure(figsize=(3.7*pos[1],6*pos[0]),dpi=160)
         gs = gridspec.GridSpec(nrows=pos[0], ncols=pos[1])#, height_ratios=[1, 1, 2])
+        
+        self.extent = [self.extent[0]/normCoord,
+                       self.extent[1]/normCoord,
+                       self.extent[2]/normCoord,
+                       self.extent[3]/normCoord]
         
         for i,d in enumerate(gs):
             if vlim:
@@ -150,18 +161,25 @@ class Plots(object):
             else:
                 vmin = data[i][:,:,t].min()
                 vmax = data[i][:,:,t].max()
-                
+            
+            if norm:
+                norm=colors.LogNorm(vmin=vmin,vmax=vmax,clip=False)
+            
             ax = fig.add_subplot(d)
             im = ax.imshow(data[i][:,:,t],cmap=cmap[i],
-                           interpolation=self.interpolation,extent=self.extent,
-                           vmin=vmin,vmax=vmax)
+                           interpolation=self.interpolation,norm=norm,
+                           extent=self.extent,
+                           vmin=vmin,vmax=vmax
+                           )
                 
             if i==0:
                 ax.set_xlabel(self.xlabel)
                 ax.set_ylabel(self.ylabel)
             ax.set_title(title[i], fontsize=20)
-            ax.set_xticks(np.arange(self.extent[0],self.extent[1]), minor=True)
-            ax.set_yticks(np.arange(self.extent[2],self.extent[3]), minor=True)
+            ax.set_xticks(np.arange(self.extent[0]/normCoord,self.extent[1]/normCoord), minor=True)
+            ax.set_yticks(np.arange(self.extent[2]/normCoord,self.extent[3]/normCoord), minor=True)
+            ax.xaxis.set_minor_locator(AutoMinorLocator())
+            ax.yaxis.set_minor_locator(AutoMinorLocator())
             
             if tstamp:
                 ax.set_title('Time: %8.3f s' %self.timeStamp[t], fontsize=20)
@@ -170,7 +188,7 @@ class Plots(object):
                 ax.grid(which='minor',color='k')
             
             # define X,Y,U,V variables for use in different plots if required
-            if streaml or glyph:
+            if streaml[i] or glyph[i]:
                 if velComp==None:
                     txt = 'ERROR: velComp=[U,V] needed to use streaml or glyph'
                     print(colored(txt,'red'))
