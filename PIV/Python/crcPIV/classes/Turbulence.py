@@ -63,7 +63,7 @@ class Turb(object):
         '''
         uu = np.mean(self.uL()**2,axis=2, keepdims=True)
         vv = np.mean(self.vL()**2,axis=2, keepdims=True)
-        uv = np.abs(np.mean(self.uL()*self.vL(),axis=2, keepdims=True))
+        uv = np.mean(self.uL()*self.vL(),axis=2, keepdims=True)
         
         return uu, vv, uv
     
@@ -133,7 +133,7 @@ class Turb(object):
         # dV/dx
         self.grad21 = numVx/(den*self.dx)
         
-        # - gradients on y direction
+        # - gradients on y direction (BUG o menos tinha que ser um flip vertical pra funcionar o 3rdBDS)
         numUy = signal.convolve(self.U,-scheme.transpose(1,0,2), mode='same')
         numVy = signal.convolve(self.V,-scheme.transpose(1,0,2), mode='same')
         # dU/dy
@@ -235,7 +235,7 @@ class Turb(object):
         '''
         print(colored(' -> ','magenta') + 'calc uncertainty of mean velocity')
         
-        varFluct = self.calcMagTij(self.uu, self.vv, self.uv, self.uv)
+        varFluct = self.calcMagTij(self.uu, self.vv, np.abs(self.uv), np.abs(self.uv))
         sigmaU = varFluct + np.mean(k*uncR**2,axis=2,keepdims=True)
         print(colored(' --> ','magenta') + 'Done\n')
         
