@@ -25,45 +25,60 @@ class Turb(object):
     
     uu, vv, uv -> Reynolds Stress components
     '''
-    def __init__(self,velObj,u,v,gradScheme='4thCDS'):
+    def __init__(self,velObj,u=None,v=None,U=0,V=0,uu=0,vv=0,uv=0,
+                 gradScheme='4thCDS'):
         print(colored(' -> ','magenta')+'Initializing turbulence calculations')
         self.dx = velObj.dx
         self.dy = velObj.dy
         self.dt = velObj.dt
+        
+        self.U, self.V, self.uu, self.vv, self.uv = self.readVars(u,v,U,V,
+                                                                  uu,vv,uv)
 
-        self.u = u
-        self.v = v
-        self.U = np.mean(self.u,axis=2, keepdims=True)
-        self.V = np.mean(self.v,axis=2, keepdims=True)
         self.magVel = np.sqrt(self.U**2 + self.V**2)
-        print(colored('  - ','magenta') + 'Avg Velocity & Avg Magnitude')
-    
-        self.uu, self.vv, self.uv = self.calcReStress()
-        print(colored('  - ','magenta') + 'Reynolds Stress tensor')
+        
         self.stdDevU = np.sqrt(self.uu)
         self.stdDevV = np.sqrt(self.vv)
         
         self.calcVelGrad(gradScheme=gradScheme)
         self.calcSij()
+        self.ProdK = self.calcProductionK()
         print(colored(' --> ','magenta') + 'Done\n')
 
+    def readVars(self,u,v,U,V,uu,vv,uv):
+        '''
+        read variables needed for calculaions
+
+        Parameters
+        ----------
         
-    def uL(self):
-        '''Method to calculate u velocity fluctuation
+        u, v - instantaneous velocity components
+        
+        U, V - time average velocity components
+        
+        uu, vv, uv - Reynolds Stress Tensor components
+
         '''
-        return self.u - self.U
+        if u is not None:
+            txt = 'Processing instantaneous velocity components'
+            print(colored('  - ','magenta') + txt)
+            U = np.mean(u,axis=2, keepdims=True)
+            V = np.mean(v,axis=2, keepdims=True)
+            print(colored('  - ','magenta') + 'Avg Velocity & Avg Magnitude')
+            uu, vv, uv = self.calcReStress(u,U,v,V)
+            print(colored('  - ','magenta') + 'Reynolds Stress tensor')
+        else:
+            txt = 'Using reduced variables'
+            print(colored('  - ','magenta') + txt)
+            
+        return U,V,uu,vv,uv
     
-    def vL(self):
-        '''Method to calculate v velocity fluctuation
-        '''
-        return self.v - self.V
-    
-    def calcReStress(self):
+    def calcReStress(self,u,U,v,V):
         '''Method to calculate Reynolds stress components
         '''
-        uu = np.mean(self.uL()**2,axis=2, keepdims=True)
-        vv = np.mean(self.vL()**2,axis=2, keepdims=True)
-        uv = np.abs(np.mean(self.uL()*self.vL(),axis=2, keepdims=True))
+        uu = np.mean((u-U)**2,axis=2, keepdims=True)
+        vv = np.mean((v-V)**2,axis=2, keepdims=True)
+        uv = np.mean((u-U)*(v-V),axis=2, keepdims=True)
         
         return uu, vv, uv
     
@@ -81,26 +96,38 @@ class Turb(object):
         '''
         return 0
     
-    def calcPSD(self,scale='density'):
+    def calcPSD(self,u,v,scale='density'):
         '''Calculates de Power Spectrum Density in the time coordinate
         '''
         print(colored(' -> ','magenta') + 'calc Power Spectrum Density')
         
         print(colored('  - ','magenta') + 'u component')
-        freqU, psdU = signal.welch(self.u,1/self.dt, window='nuttall',
+        freqU, psdU = signal.welch(u,1/self.dt, window='nuttall',
                                    nfft=1024, average='median',scaling=scale)
         
         print(colored('  --> ','magenta') + 'Done')
         
         print(colored('  - ','magenta') + 'v component')
         
-        freqV, psdV = signal.welch(self.v,1/self.dt, window='nuttall',
+        freqV, psdV = signal.welch(v,1/self.dt, window='nuttall',
                                    nfft=1024, average='median',scaling=scale)
         print(colored('  --> ','magenta') + 'Done')
         
         print(colored(' --> ','magenta') + 'Done\n')
         
         return freqU, psdU, freqV, psdV
+    
+    def integralTime(self,corr):
+        '''Method to calculate integral time scale based on correlation
+        '''
+        for i,v in enumerate(corr):
+            if v<0:
+                idx = i-1
+                break
+        corrI = corr[:idx]
+        t0 = np.trapz(corrI,dx=self.dt)
+        
+        return t0
     
     def calcVelGrad(self,gradScheme):
         '''calculates the velocity gradient tensor
@@ -133,7 +160,7 @@ class Turb(object):
         # dV/dx
         self.grad21 = numVx/(den*self.dx)
         
-        # - gradients on y direction
+        # - gradients on y direction (BUG o menos tinha que ser um flip vertical pra funcionar o 3rdBDS)
         numUy = signal.convolve(self.U,-scheme.transpose(1,0,2), mode='same')
         numVy = signal.convolve(self.V,-scheme.transpose(1,0,2), mode='same')
         # dU/dy
@@ -164,6 +191,15 @@ class Turb(object):
                                       self.grad12, self.grad21)
         
         return 0
+    
+    def calcProductionK(self):
+        '''
+        calculate the turbulence production term.
+
+        '''
+        Prod = -(self.uu*self.S11 + self.vv*self.S22 + 2*(self.uv*self.S12))
+        
+        return Prod
     
     def calcTauijSmagorinsky(self):
         '''calculate the modeled tauij tensor - SGS tensor based on smagorinsky
@@ -215,7 +251,7 @@ class Turb(object):
         epsilon = tau11*self.S11 + tau11*self.S12 + tau12*self.S22
         epsilon += tau12*self.S11 + tau22*self.S12 + tau22*self.S22
         epsilon += 2*tau12*self.S12
-        epsilon = -200.*epsilon
+        epsilon = np.abs(epsilon)
         print(colored(' --> ','magenta') + 'Done\n')
         
         return epsilon
@@ -235,7 +271,8 @@ class Turb(object):
         '''
         print(colored(' -> ','magenta') + 'calc uncertainty of mean velocity')
         
-        varFluct = self.calcMagTij(self.uu, self.vv, self.uv, self.uv)
+        varFluct = self.calcMagTij(self.uu, self.vv,
+                                   np.abs(self.uv), np.abs(self.uv))
         sigmaU = varFluct + np.mean(k*uncR**2,axis=2,keepdims=True)
         print(colored(' --> ','magenta') + 'Done\n')
         
@@ -261,4 +298,3 @@ class Turb(object):
         print(colored(' --> ','magenta') + 'Done\n')
         
         return URuu
-    
