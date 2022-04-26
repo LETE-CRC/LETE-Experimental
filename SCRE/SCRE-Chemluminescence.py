@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 ===============================================================================
-                      Python code for PIV analysis
+                      Python code for SCRE analysis
    Created by Combustion Research Center CRC at LETE - Sao Paulo, Brasil
    Laboratory of Environmental and Thermal Engineering - LETE
    Escola Politecnica da USP - EPUSP
