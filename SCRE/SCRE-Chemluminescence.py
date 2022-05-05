@@ -8,26 +8,37 @@
    Escola Politecnica da USP - EPUSP
 ===============================================================================
 version:0.0 - 04/2022: Helio Villanueva
+version:0.1 - 05/2022: Helio Villanueva
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import image
 import glob
+from tqdm import tqdm
 
 # ******************************************************************************
 # -- USER
 # ******************************************************************************
 
 path = "DF01-NL"
+imFmt = 'tif'
 rCAD = 1  # ratio CAD/Time step (1, 2...)
-init0 = 0  # initial images discarted (360)
+init0 = 0  # number of initial images discarted (eg: 360)
+
 
 # ******************************************************************************
 # -- MAIN
 # ******************************************************************************
 
-imgNames = glob.glob(path + '/*[0-9].*')  # List images in Dir 'path'
+header = '\n' + 70*"=" + '\n' + '\t\tPython code for SCRE analysis\n'
+header += 'Created by Combustion Research Center CRC at LETE - Sao Paulo, Brasil\n'
+header += 'Laboratory of Environmental and Thermal Engineering - LETE\n'
+header += 'Escola Politecnica da USP - EPUSP\n'
+header += 70*"=" + '\n'
+print(header)
+
+imgNames = glob.glob(path + '/*[0-9].' + imFmt)  # List images in Dir 'path'
 imgNames.sort()
 imgNames = imgNames[init0:]  # discard initial images
 
@@ -35,28 +46,54 @@ img = image.imread(imgNames[0])  # read single img for general infos
 lins = img.shape[0]  # y coord
 cols = img.shape[1]  # x coord
 stepsOrig = len(imgNames)  # tot of all imgs saved by the camera
-rCycleStep = int(720 / rCAD)  # ratio steps / cycle
-tStepsCycle = int(stepsOrig / rCycleStep)  # total steps / cycle
+CADs = int(719 / rCAD)  # ratio steps / cycle
+cycles = int(stepsOrig / CADs)  # total steps / cycle
 
-steps = tStepsCycle * rCycleStep
+steps = cycles * CADs
 imgNames = imgNames[:steps]
+limgNames = np.array(imgNames).reshape(cycles, CADs)
 
-limgNames = np.array(imgNames).reshape(tStepsCycle, rCycleStep)
+print('General Infos')
+print(14*'-', '\nImage res: ', lins, 'x', cols)
+print('CADs/cycle: ', CADs)
+print('Cycles: ', cycles)
 
-# -- For loops for each cycle and timestep
+# -- Background image for removal process
 # ******************************************************************************
-for cy in range(tStepsCycle):  # loop over cycles
-    print("Cycle No: ", cy)
-    # process things for the hole cycle steps
-    for stp, name in enumerate(limgNames[cy, :]):
-        print("File: ", name)
-        # process each timestep things
-        imgI = image.imread(name)
-        imgAvg = np.average(imgI)
-        print(imgAvg)
+imsCy = np.zeros((lins, cols, cycles))
+for cy in range(cycles):  # loop over cycles
+    #print("Cycle No: ", cy)
+    imsCy[:, :, cy] = image.imread(limgNames[cy, 0])
+
+imBackground = np.mean(imsCy, 2)
+
+# -- For loops for each cycle and CAD
 # ******************************************************************************
+imsCycleMean = np.zeros((lins, cols, CADs))
+imsCycleStdDev = np.zeros((lins, cols, CADs))
+
+for t in tqdm(range(CADs), desc="CAD calculations: "):
+    imsCy = np.zeros((lins, cols, cycles))
+    for cy in range(cycles):  # loop over cycles
+        imsCy[:, :, cy] = image.imread(limgNames[cy, t]) - imBackground
+    # hole cycle calculation
+    imM = np.mean(imsCy, 2, keepdims=True)
+    imsCycleMean[:, :, t] = imM[:, :, 0]
+    imsCyFluct = np.sqrt((imsCy[:, :, :] - imM)**2)
+    imsCycleStdDev[:, :, t] = np.mean(imsCyFluct, 2)
+
+# ******************************************************************************
+
+print('END Calculations\nPlots:')
 
 plt.figure()
-plt.imshow(img, cmap='hot')
+plt.imshow(imsCycleMean[:,:,10], cmap='hot')
 plt.colorbar()
 plt.show()
+
+################################################################################
+'''
+TODOS:
+- cortar imagens pra ajustar bordas
+- if a prova de numero errado no rCAD
+'''
