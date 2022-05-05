@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 from matplotlib import image
 import glob
 from tqdm import tqdm
+import os
 
 # ******************************************************************************
 # -- USER
@@ -25,7 +26,7 @@ path = "DF01-NL"
 imFmt = 'tif'
 rCAD = 1  # ratio CAD/Time step (1, 2...)
 init0 = 0  # number of initial images discarted (eg: 360)
-
+saveImgs = True  # save mean and stdDev images for each CAD
 
 # ******************************************************************************
 # -- MAIN
@@ -57,6 +58,7 @@ print('General Infos')
 print(14*'-', '\nImage res: ', lins, 'x', cols)
 print('CADs/cycle: ', CADs)
 print('Cycles: ', cycles)
+print(14*'-')
 
 # -- Background image for removal process
 # ******************************************************************************
@@ -69,27 +71,68 @@ imBackground = np.mean(imsCy, 2)
 
 # -- For loops for each cycle and CAD
 # ******************************************************************************
-imsCycleMean = np.zeros((lins, cols, CADs))
-imsCycleStdDev = np.zeros((lins, cols, CADs))
+try:
+    print('Trying to read npy files')
+    imsCycleMean = np.load(path + '/imsCycleMean.npy')
+    imsCycleStdDev = np.load(path + '/imsCycleStdDev.npy')
+    print('done')
+except:
+    print('Reading raw img files')
+    imsCycleMean = np.zeros((lins, cols, CADs))
+    imsCycleStdDev = np.zeros((lins, cols, CADs))
 
-for t in tqdm(range(CADs), desc="CAD calculations: "):
-    imsCy = np.zeros((lins, cols, cycles))
-    for cy in range(cycles):  # loop over cycles
-        imsCy[:, :, cy] = image.imread(limgNames[cy, t]) - imBackground
-    # hole cycle calculation
-    imM = np.mean(imsCy, 2, keepdims=True)
-    imsCycleMean[:, :, t] = imM[:, :, 0]
-    imsCyFluct = np.sqrt((imsCy[:, :, :] - imM)**2)
-    imsCycleStdDev[:, :, t] = np.mean(imsCyFluct, 2)
+    for t in tqdm(range(CADs), desc="CAD calculations: "):
+        imsCy = np.zeros((lins, cols, cycles))
+        for cy in range(cycles):  # loop over cycles
+            imsCy[:, :, cy] = image.imread(limgNames[cy, t]) - imBackground
+
+        # hole cycle calculation
+        imsCy[imsCy<0] = 0  # No negative values after background removal
+        imM = np.mean(imsCy, 2, keepdims=True)
+        imsCycleMean[:, :, t] = imM[:, :, 0]
+        imsCyFluct = np.sqrt((imsCy[:, :, :] - imM)**2)
+        imsCycleStdDev[:, :, t] = np.mean(imsCyFluct, 2)
+    print('Saving .npy arrays')
+    np.save(path + '/imsCycleMean', imsCycleMean)
+    np.save(path + '/imsCycleStdDev', imsCycleStdDev)
 
 # ******************************************************************************
 
-print('END Calculations\nPlots:')
+print('END Calculations')
 
-plt.figure()
-plt.imshow(imsCycleMean[:,:,10], cmap='hot')
-plt.colorbar()
-plt.show()
+# ******************************************************************************
+# -- PLOTS
+# ******************************************************************************
+# min max for plots
+vMeanMin = imsCycleMean.min()
+vMeanMax = imsCycleMean.max()
+vStdDevMin = imsCycleStdDev.min()
+vStdDevMax = imsCycleStdDev.max()
+
+print('Saving images')
+if not os.path.exists('./CADmean'):
+    os.makedirs('./CADmean')
+
+if not os.path.exists('./CADstdDev'):
+    os.makedirs('./CADstdDev')
+
+for t in tqdm(range(CADs), desc="Saving CAD imgs: "):
+    # Mean
+    plt.figure()
+    plt.imshow(imsCycleMean[:, :, t], cmap='hot', vmin=vMeanMin, vmax=vMeanMax)
+    plt.title('mean CAD %3d' %t)
+    plt.colorbar()
+    figNameMean = './CADmean/CADmean' + str(t) + '.png'
+    plt.savefig(figNameMean)
+    plt.close()
+    # StdDev
+    plt.figure()
+    plt.imshow(imsCycleStdDev[:, :, t], cmap='hot', vmin=vStdDevMin, vmax=vStdDevMax)
+    plt.title('stdDev CAD %3d' %t)
+    plt.colorbar()
+    figNameStdDev = './CADstdDev/CADstdDev' + str(t) + '.png'
+    plt.savefig(figNameStdDev)
+    plt.close()
 
 ################################################################################
 '''
