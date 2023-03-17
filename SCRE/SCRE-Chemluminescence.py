@@ -10,26 +10,40 @@
 version:0.0 - 04/2022: Helio Villanueva
 version:0.1 - 05/2022: Helio Villanueva
 version:0.2 - 01/2023: Helio Villanueva
+version:0.3 - 02/2023: Helio Villanueva
+version:0.4 - 03/2023: Helio Villanueva
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import image
+import matplotlib.gridspec as gridspec
+from matplotlib.ticker import MultipleLocator
+from scipy import signal
 import glob
 from tqdm import tqdm
 import os
+
+plt.rcParams.update({
+    "text.usetex": True,
+    "font.family": "Helvetica",
+    "font.size": 14
+})
+plt.rcParams['xtick.top'] = plt.rcParams['ytick.right'] = True
+plt.rcParams['xtick.minor.top'] = plt.rcParams['ytick.minor.right'] = True
 
 # ******************************************************************************
 # -- USER
 # ******************************************************************************
 
-paths = ["DF01-NL"]
+paths = ["inferior_DF02P01_221216"]
 
-inputs = {'imFmt':'tif',
+inputs = {'imFmt':'jpg',
           'rMotor':2000,  # rpm rotacao do motor
           'fCAM':24000,  # Hz taxa aquisicao cameras
           'init0':0,  # number of initial images discarted (eg 360)
           'durationCADs':150,  # imgs with combustion to save
+          'combCycles':21,  # numero de ciclos com combustao
           'saveImgs':True  # save mean and stdDev images for each CAD
           }
 
@@ -45,7 +59,7 @@ class Caso():
     def __init__(self,path, inputs):
         self.path = path
         self.inputs = inputs
-        self.lins, self.cols, self.CADs, self.cycles, self.limgNames, self.infos = self.baseInfos()
+        self.lins, self.cols, self.rCAD, self.CADs, self.cycles, self.combCycles, self.limgNames, self.infos = self.baseInfos()
 
     def baseInfos(self):
         '''Basic informations
@@ -70,12 +84,14 @@ class Caso():
 
         infos = 'General Infos\n'
         infos += 14*'-' + '\nImage res: %.1f x %.1f\n' %(lins, cols)
+        infos += 'N tot images: %.2f\n' %stepsOrig
         infos += 'CADs/image: %.2f\n' %rCAD
-        infos += 'CADs/cycle: %.1f\n' %CADs
+        infos += 'CADs/cycle: %.1f\n' %(CADs+1)
         infos += 'Cycles: %.1f\n' %cycles
+        infos += 'Cycles w/ combustion: %.1f\n' %self.inputs['combCycles']
         infos += 14*'-'
 
-        return lins, cols, CADs, cycles, limgNames, infos
+        return lins, cols, rCAD, CADs, cycles, self.inputs['combCycles'], limgNames, infos
 
     def imgBackground(self):
         '''Background image for removal process
@@ -105,8 +121,8 @@ class Caso():
             for t in tqdm(range(self.CADs), desc="CAD calculations: "):
                 if t > self.inputs['durationCADs']:
                     break
-                imsCy = np.zeros((self.lins, self.cols, self.cycles))
-                for cy in range(self.cycles):  # loop over cycles
+                imsCy = np.zeros((self.lins, self.cols, self.combCycles))
+                for cy in range(self.combCycles):  # loop over cycles w/ comb
                     imsCy[:, :, cy] = image.imread(self.limgNames[cy, t])
                     imsCy[:, :, cy] -= imgBackground
 
@@ -122,6 +138,27 @@ class Caso():
 
         return imsCycleMean, imsCycleStdDev
 
+    def calcDerivada(self,imsCycleMean):
+        print('Processing time derivative')
+        # central differencing 2nd order
+        # central differencing 4th order
+        # - Fourth order CDS scheme from Ferziger Computational methods for
+        # - fluid dynamics on page 44 eq 3.14
+        scheme = np.array([-1,8,0,-8,1]).reshape(1,1,5)
+        den = 12
+        num = signal.convolve(imsCycleMean,scheme, mode='same')
+        dt = 1/self.inputs['fCAM']
+        ddt = num/(den*dt)
+
+        return ddt
+
+    def calcFlameArea(self,imsCycleMean):
+        print('Processing Flame area')
+        # binarization
+        mask = imsCycleMean > 50
+        flameArea = np.sum(mask,axis=(0,1))
+        return flameArea,mask
+
     def Plots(self,imsCycleMean,imsCycleStdDev):
         '''
         '''
@@ -131,40 +168,119 @@ class Caso():
         vStdDevMin = imsCycleStdDev.min()
         vStdDevMax = imsCycleStdDev.max()
 
-        print('Saving images')
+        # print('Saving images')
         if not os.path.exists(self.path + '/CADmean'):
             os.makedirs(self.path + '/CADmean')
 
         if not os.path.exists(self.path + '/CADstdDev'):
             os.makedirs(self.path + '/CADstdDev')
 
-        for t in tqdm(range(self.CADs), desc="Saving CAD imgs: "):
+        for t in tqdm(range(self.CADs), desc="Saving mean/stdDev CAD imgs: "):
             if t > self.inputs['durationCADs']:
                 break
+            cad = t*self.rCAD
             # Mean
-            plt.figure()
+            plt.figure(tight_layout=True)
             plt.imshow(imsCycleMean[:, :, t], cmap='hot', vmin=vMeanMin, vmax=vMeanMax)
-            plt.title('mean CAD %3d' %t)
-            plt.colorbar()
+            plt.title('mean CAD %3d' %cad)
+            plt.colorbar(label='Intensidade luminosa I')
             figNameMean = self.path + '/CADmean/CADmean%04d' %t + '.png'
             plt.savefig(figNameMean)
             plt.close()
             # StdDev
-            plt.figure()
+            plt.figure(tight_layout=True)
             plt.imshow(imsCycleStdDev[:, :, t], cmap='hot', vmin=vStdDevMin, vmax=vStdDevMax)
-            plt.title('stdDev CAD %3d' %t)
-            plt.colorbar()
+            plt.title('stdDev CAD %3d' %cad)
+            plt.colorbar(label='Intensidade luminosa I')
             figNameStdDev = self.path + '/CADstdDev/CADstdDev%04d' %t + '.png'
             plt.savefig(figNameStdDev)
             plt.close()
+
+        return 0
+
+    def PlotDerivada(self,imsCycleddt):
+        '''
+        '''
+        # min max for plots
+        vddtMin = imsCycleddt.min()
+        vddtMax = imsCycleddt.max()
+
+        # print('Saving images')
+
+        if not os.path.exists(self.path + '/CADddt'):
+            os.makedirs(self.path + '/CADddt')
+
+        for t in tqdm(range(self.CADs), desc="Saving ddt CAD imgs: "):
+            if t > self.inputs['durationCADs']:
+                break
+            cad = t*self.rCAD
+            # Ddt
+            plt.figure(tight_layout=True)
+            plt.imshow(imsCycleddt[:, :, t], cmap='jet', vmin=vddtMin, vmax=vddtMax)
+            plt.title('ddt CAD %3d' %cad)
+            plt.colorbar()
+            figNameddt = self.path + '/CADddt/CADddt%04d' %t + '.png'
+            plt.savefig(figNameddt)
+            plt.close()
+
+        return 0
+
+    def PlotFlameArea(self, flameArea, flameAreaImg):
+        '''
+        '''
+        # min max for plots
+        fAMin = flameAreaImg.min()
+        fAMax = flameAreaImg.max()
+
+        # print('Saving images')
+
+        if not os.path.exists(self.path + '/CADflameArea'):
+            os.makedirs(self.path + '/CADflameArea')
+
+        for t in tqdm(range(self.CADs), desc="Saving flame Area CAD imgs: "):
+            if t > self.inputs['durationCADs']:
+                break
+            cad = t*self.rCAD
+            # Flame Area
+            fig = plt.figure(tight_layout=True)
+            gs = gridspec.GridSpec(1, 1)
+            ax = fig.add_subplot(gs[0, 0])
+            ax.imshow(flameAreaImg[:, :, t], cmap='gray', vmin=fAMin, vmax=fAMax)
+            ax.set_title('Flame Area CAD %3d' %cad)
+            bbox = dict(facecolor='w', alpha=0.7,boxstyle='Round')
+            text = 'A = %0.2f $px^2$' %flameArea[t]
+            ax.text(0.7,0.8,text,bbox=bbox,transform=ax.transAxes)
+            # plt.colorbar()
+            figNameFA = self.path + '/CADflameArea/CADflameArea%04d' %t + '.png'
+            plt.savefig(figNameFA)
+            plt.close()
+
+        return 0
+
+    def PlotFlameIntensity(self, flameArea):
+        '''
+        '''
+        # min max for plots
+        fIMin = flameArea.min()
+        fIMax = flameArea.max()
+
+        fig = plt.figure(tight_layout=True)
+        gs = gridspec.GridSpec(1, 1)
+        ax = fig.add_subplot(gs[0, 0])
+        ax.plot(flameArea,'k')
+        ax.set_ylim(fIMin,fIMax)
+        ax.set_title('case: ')
+        ax.set_xlabel('CAD')
+        ax.set_ylabel('Flame Intensity')
+        ax.xaxis.set_minor_locator(MultipleLocator(10))
+        ax.yaxis.set_minor_locator(MultipleLocator(200))
+        figNameFA = self.path + '/flameIntensity.png'
+        plt.savefig(figNameFA)
+        plt.close()
+
         return 0
 
 ################################################################################
-'''
-TODOS:
-- cortar imagens pra ajustar bordas
-- if a prova de numero errado no rCAD
-'''
 
 # *****************************************************************************
 # -- MAIN
@@ -182,10 +298,17 @@ def main():
     print(header)
 
     for path in paths:
-        print('Processando caso %s' %path)
+        print('\nProcessando caso %s' %path)
         case = Caso(path,inputs)
+        print(case.infos)
         imgMean, imgDev = case.imgProcess()
+        imgddt = case.calcDerivada(imgMean)
+        flameArea, flameAreaImg = case.calcFlameArea(imgMean)
         case.Plots(imgMean,imgDev)
+        case.PlotDerivada(imgddt)
+        case.PlotFlameArea(flameArea, flameAreaImg)
+        case.PlotFlameIntensity(flameArea)
+        print('Done\n')
     return 0
 
 
