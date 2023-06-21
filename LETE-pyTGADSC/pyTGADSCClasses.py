@@ -43,12 +43,12 @@ px = 1/plt.rcParams['figure.dpi']  # pixel in inches
 class Problem(ElementwiseProblem):
 
     def __init__(self, TGA, DSC, xlim, **kwargs):
-        XL = xlim['agua']['low']+xlim['C']['low']+xlim['Cox']['low']
+        XL = xlim['bd']['low']+xlim['bp']['low']+xlim['bo']['low']
         XL += xlim['alpha']['low']+xlim['beta']['low']+xlim['ph2o']['low']
-        XL += xlim['ddts']['low']+xlim['dscs']['low']
-        XU = xlim['agua']['up']+xlim['C']['up']+xlim['Cox']['up']
+        XL += xlim['ddts']['low']+xlim['h_i']['low']
+        XU = xlim['bd']['up']+xlim['bp']['up']+xlim['bo']['up']
         XU += xlim['alpha']['up']+xlim['beta']['up']+xlim['ph2o']['up']
-        XU += xlim['ddts']['up']+xlim['dscs']['up']
+        XU += xlim['ddts']['up']+xlim['h_i']['up']
 
         super().__init__(n_var=28,
                          n_obj=1,
@@ -77,13 +77,9 @@ class Problem(ElementwiseProblem):
 
         erro1a = sum(abs(m_opt - self.TGA.sinalfilt))/sum(abs(self.TGA.sinalfilt))
         erro2a = sum(abs(ddt_opt + self.TGA.ddt))/sum(abs(self.TGA.ddt))
-        # resample DSC por conta de dif freq aquisicao
-        resample = len(self.DSC.sinalfilt)/len(en_opt)
-        dscnew = self.DSC.sinalfilt[::int(resample)]
-        dsz = len(dscnew)-len(en_opt)
-        dscnew = dscnew[:-dsz]
-        self.DSC.sinalNew = dscnew
-        erro3a = sum(abs(en_opt - dscnew))/sum(abs(dscnew))
+
+        # self.DSC.sinalNew = self.DSC.sinalfilt  # dscnew
+        erro3a = sum(abs(en_opt - self.DSC.sinalfilt))/sum(abs(self.DSC.sinalfilt))
 
 #        out["F"] = (erro1a/2 + erro2a/2)
         out["F"] = (erro1a/3 + erro2a/3 + erro3a/3)
@@ -203,51 +199,61 @@ class BaseExp(object):
         self.sunit = 'unidade do sinal'
         self.dunit = 'unidade da derivada'
 
-    def readData(self, fileName, Tempinit, tga=False):
+    def readData(self, fileName, Tempinit, AqTime, tga=False):
         '''Funcao para ler dados TGA/DSC
         '''
         with open(fileName,'r',encoding='latin1') as f:
-            content = f.read()
-
-        noHeader = re.search(r'\[Data\]\n(.*)',content,flags=re.DOTALL)
-        raw = io.StringIO(noHeader.group(1))
-        dataPD = pd.read_csv(raw,delimiter='\t',skiprows=[1])
+            content = f.read().strip()
+        content = content.replace('\n\n','\n')
 
         # Sample Weight
         m0raw = re.search(r'Sample Weight:\s+(.*)\[mg\]',content,flags=0)
         m0 = float(m0raw.group(1))*1e-6  # [kg]
 
-        # Sample aquisition frequency
-        freqraw = re.search(r'Sampling Time \[ sec \]:\s+(.*)',content,flags=0)
-        freq = float(freqraw.group(1))  # [s]
-        print('Freq aquisicao: ', freq)
+        # Sample aquisition time
+        timeraw = re.search(r'Sampling Time \[ sec \]:\s+(.*)',content,flags=0)
+        time = float(timeraw.group(1))  # [s]
+
+        noHeader = re.search(r'\[Data\]\n(.*)',content,flags=re.DOTALL)
+        raw = io.StringIO(noHeader.group(1))
+        dataPD = pd.read_csv(raw,delimiter='\t',skiprows=[1])
+        dataPD = dataPD[::int(AqTime/time)]
 
         temp = np.array(dataPD['Temp'].values)
 
         # Remove dados iniciais antes da rampa de aquecimento
-        mask = temp > Tempinit
-        temp = temp[mask]
-        # sz = len(temp)
-        time = np.array(dataPD['Time'].values)[mask]
+        maskLow = temp > Tempinit
+        temp = temp[maskLow]
+        # Remove dados com temperaturas maiores que 600 C
+        maskUp = temp < 600
+        temp = temp[maskUp]
+
+        time = np.array(dataPD['Time'].values)[maskLow]
+        time = time[maskUp]
 
         tempK = temp + 273.15
         dt = np.gradient(time)
 
         if tga:
             sinal = np.array(dataPD['TGA'].values)*1e-6  # [kg]
-            sinal = sinal[mask]
+            sinal = sinal[maskLow]
+            sinal = sinal[maskUp]
             sinal[sinal<0] = 0
             sinalNorm = sinal/m0  # normaliza com o valor de massa inicial
-            dta = np.array(dataPD['DTA'].values)[mask]
+            dta = np.array(dataPD['DTA'].values)[maskLow]
+            dta = dta[maskUp]
+            # print('Tamanho do vetor dados: ', len(sinalNorm))
 
             return [temp, time, tempK, dt, sinal, sinalNorm, dta, m0]
         else:
-            sinal = np.array(dataPD['DSC'].values)[mask]
+            sinal = np.array(dataPD['DSC'].values)[maskLow]
+            sinal = sinal[maskUp]
             sinalNorm = sinal*1e-6/m0  # [mW/mg]
+            # print('Tamanho do vetor dados: ', len(sinalNorm))
 
             return [temp, time, tempK, dt, sinal, sinalNorm, m0]
 
-    def _process(self, exps, Tempinit, exName):
+    def _process(self, exps, Tempinit, exName, AqTime):
         tga=False
         if exName=='TGA':
             tga = True
@@ -258,7 +264,7 @@ class BaseExp(object):
         fNames = []
         for i,k in enumerate(exps.keys()):
             fName = exps[k][exName]
-            expData = self.readData(fName,Tempinit,tga=tga)
+            expData = self.readData(fName,Tempinit, AqTime,tga=tga)
             szs[i] = len(expData[0])
             m0s[i] = expData[-1]
             data.append(expData)
@@ -288,11 +294,11 @@ class TGA(BaseExp):
     Exps, fNames
     '''
 
-    def __init__(self, exps, Tempinit):
+    def __init__(self, exps, Tempinit, AqTime):
         self.sName = 'TGA'
         self.sunit = '-'
         self.dunit = 'kg'
-        self.Exps, self.fNames, mean, self.m0s = self._process(exps, Tempinit, self.sName)
+        self.Exps, self.fNames, mean, self.m0s = self._process(exps, Tempinit, self.sName, AqTime)
         self.temp,self.time,self.tempK,self.dt,self.sinal,self.sinalNorm,self.dta = mean
         self.m0 = np.mean(self.m0s)
 
@@ -308,12 +314,12 @@ class DSC(BaseExp):
     Exps, fNames
     '''
 
-    def __init__(self, exps, Tempinit):
+    def __init__(self, exps, Tempinit, AqTime):
         self.fileName = 'DSCmean'
         self.sName = 'DSC'
         self.sunit = 'mW/mg'
         self.dunit = 'mW/mg'
-        self.Exps, self.fNames, mean, self.m0s = self._process(exps, Tempinit, self.sName)
+        self.Exps, self.fNames, mean, self.m0s = self._process(exps, Tempinit, self.sName, AqTime)
         self.temp,self.time,self.tempK,self.dt,self.sinal,self.sinalNorm = mean
         self.m0 = np.mean(self.m0s)
 
@@ -331,13 +337,63 @@ class Ensaio(object):
         self.lb = []
         self.ub = []
 
-        self.TGA = TGA(exps, Tempinit)
-        self.DSC = DSC(exps, Tempinit)
+        self.AqTime = self.readAqTime(exps)
+        self.TGA = TGA(exps, Tempinit, self.AqTime)
+        self.DSC = DSC(exps, Tempinit, self.AqTime)
+        self.correctSize()
         self.TGA.sinalfilt = self.signalProcess(self.TGA, fc=0.005)
         self.DSC.sinalfilt = self.signalProcess(self.DSC, fc=0.01)
         self.TGA.ddt = np.gradient(self.TGA.sinalfilt,self.TGA.time)  # kg/s
         self.DSC.ddt = np.gradient(self.DSC.sinalfilt,self.DSC.time)  # mW/mg/s *1e-3  # W/kg/s
         self.TGA.dTdt = np.gradient(self.TGA.tempK,self.TGA.time)  # K/s
+
+    def readAqTime(self, exps):
+        '''Funcao para ler dados TGA/DSC
+        '''
+        time = []
+        for i,k in enumerate(exps.keys()):
+            fNameTGA = exps[k]['TGA']
+            fNameDSC = exps[k]['DSC']
+            # TGA
+            with open(fNameTGA,'r',encoding='latin1') as fTGA:
+                contentTGA = fTGA.read()
+            # Sample aquisition time
+            timerawTGA = re.search(r'Sampling Time \[ sec \]:\s+(.*)',contentTGA,flags=0)
+            timeTGA = float(timerawTGA.group(1))  # [s]
+            time.append(timeTGA)
+            # DSC
+            with open(fNameDSC,'r',encoding='latin1') as fDSC:
+                contentDSC = fDSC.read()
+            # Sample aquisition time
+            timerawDSC = re.search(r'Sampling Time \[ sec \]:\s+(.*)',contentDSC,flags=0)
+            timeDSC = float(timerawDSC.group(1))  # [s]
+            time.append(timeDSC)
+
+        return max(time)
+
+    def correctSize(self):
+        '''Funcao para corrigir e igualar tamanho dos vetores TGA e DSC
+        '''
+        szTGA = len(self.TGA.temp)
+        szDSC = len(self.DSC.temp)
+        szMin = min(szTGA, szDSC)
+        szDiff = max(szTGA, szDSC) - szMin
+        if szTGA is not szMin:
+            self.TGA.temp = self.TGA.temp[:-szDiff]
+            self.TGA.time = self.TGA.time[:-szDiff]
+            self.TGA.tempK = self.TGA.tempK[:-szDiff]
+            self.TGA.dt = self.TGA.dt[:-szDiff]
+            self.TGA.sinal = self.TGA.sinal[:-szDiff]
+            self.TGA.sinalNorm = self.TGA.sinalNorm[:-szDiff]
+            self.TGA.dta = self.TGA.dta[:-szDiff]
+        if szDSC is not szMin:
+            self.DSC.temp = self.DSC.temp[:-szDiff]
+            self.DSC.time = self.DSC.time[:-szDiff]
+            self.DSC.tempK = self.DSC.tempK[:-szDiff]
+            self.DSC.dt = self.DSC.dt[:-szDiff]
+            self.DSC.sinal = self.DSC.sinal[:-szDiff]
+            self.DSC.sinalNorm = self.DSC.sinalNorm[:-szDiff]
+        return 0
 
     def signalProcess(self,obj,fc=0.005,plot=False):
         '''Funcao para processamento do sinal
@@ -358,12 +414,12 @@ class Ensaio(object):
 
     def optimize(self, xlim=None):
         if xlim is None:
-            xlim = {'agua':{'low':[1.5,1e7,60],  # 0,1,2
-                            'up':[3.0,1e8,65]},  # 0,1,2
-                    'C':{'low':[2.5,1e4,85],  # 3,4,5
-                         'up':[3.0,1e7,110]},  # 3,4,5
-                    'Cox':{'low':[1.5,1e6,80,0.5],  # 6,7,8,9
-                           'up':[3.0,3e6,110,1.1]},  # 6,7,8,9
+            xlim = {'bd':{'low':[1.5,1e7,60],  # 0,1,2
+                          'up':[3.0,1e8,65]},  # 0,1,2
+                    'bp':{'low':[2.5,1e4,85],  # 3,4,5
+                          'up':[3.0,1e7,110]},  # 3,4,5
+                    'bo':{'low':[1.5,1e6,80,0.5],  # 6,7,8,9
+                          'up':[3.0,3e6,110,1.1]},  # 6,7,8,9
                     'alpha':{'low':[0.9,1e11,110,0.5],  # 10,11,12,13
                              'up':[2.5,1e12,200,1.0]},  # 10,11,12,13
                     'beta':{'low':[0.9,1e2,100,0.9],  # 14,15,16,17
@@ -372,8 +428,8 @@ class Ensaio(object):
                             'up':[0.08]},  # 18
                     'ddts':{'low':[0.1,0.1,0.1,0.1],  # 19,20,21,22
                             'up':[1.0,1.0,0.4,0.4]},  # 19,20,21,22
-                    'dscs':{'low':[1e5,1e5,1e5,1e5,1e5],  # 23,24,25,26,27
-                            'up':[1e7,1e7,1e7,1e7,1e7]}}  # 23,24,25,26,27
+                    'h_i':{'low':[1e5,1e5,1e5,1e5,1e5],  # 23,24,25,26,27
+                           'up':[1e7,1e7,1e7,1e7,1e7]}}  # 23,24,25,26,27
 
         problem = Problem(self.TGA, self.DSC, xlim)
 
@@ -386,7 +442,7 @@ class Ensaio(object):
             eliminate_duplicates=True
         )
 
-        termination = get_termination("n_gen", 50)
+        termination = get_termination("n_gen", 1000)
 
         res = minimize(problem,
                        algorithm,
@@ -398,23 +454,23 @@ class Ensaio(object):
         Xres = res.X
         Fres = res.F
         header1 = ['MASSA','nk','Ak','Ek','nO2_k']
-        tagua = ['agua',Xres[0],Xres[1],Xres[2],'-']
-        tC = ['C',Xres[3],Xres[4],Xres[5],'-']
-        tCox = ['Cox',Xres[6],Xres[7],Xres[8],Xres[9]]
-        talpha = ['alpha',Xres[10],Xres[11],Xres[12],Xres[13]]
-        tbeta = ['beta',Xres[14],Xres[15],Xres[16],Xres[17]]
+        tagua = ['bd',Xres[0],Xres[1],Xres[2],'-']
+        tC = ['bp',Xres[3],Xres[4],Xres[5],'-']
+        tCox = ['bo',Xres[6],Xres[7],Xres[8],Xres[9]]
+        talpha = ['alpha_o',Xres[10],Xres[11],Xres[12],Xres[13]]
+        tbeta = ['beta_o',Xres[14],Xres[15],Xres[16],Xres[17]]
         table1 = [header1,tagua,tC,tCox,talpha,tbeta]
 
         txt = '\nRESULTADOS\n%%H2O: %.5f' %Xres[18]
         txt += '\n' + tabulate(table1,headers='firstrow',tablefmt='fancy_grid')
 
-        header2 = ['DDT','nu_a','nu_b','nu_ash alpha','nu_ash beta']
-        tddt = ['ddt',Xres[19],Xres[20],Xres[21],Xres[22]]
+        header2 = ['Omega','nu_a','nu_b','nu_ash alpha','nu_ash beta']
+        tddt = ['nu',Xres[19],Xres[20],Xres[21],Xres[22]]
         table2 = [header2,tddt]
         txt += '\n' + tabulate(table2,headers='firstrow',tablefmt='fancy_grid')
 
-        header3 = ['DSC','agua','C','Cox','alpha','beta']
-        tdsc = ['dsc',Xres[23],Xres[24],Xres[25],Xres[26],Xres[27]]
+        header3 = ['DSC','h_bd','h_bp','h_bo','h_alpha_o','h_beta_o']
+        tdsc = ['h_i',Xres[23],Xres[24],Xres[25],Xres[26],Xres[27]]
         table3 = [header3,tdsc]
         txt += '\n' + tabulate(table3,headers='firstrow',tablefmt='fancy_grid')
 
@@ -431,15 +487,7 @@ class Ensaio(object):
         # derivadas
         self.TGA.ddt_agua,self.TGA.ddt_C,self.TGA.ddt_Cox,self.TGA.ddt_alpha,self.TGA.ddt_a,self.TGA.ddt_beta,self.TGA.ddt_b,self.TGA.ddt_ash = ddts
 
-        # resample DSC por conta de dif freq aquisicao
-        resample = len(self.DSC.sinalfilt)/len(self.DSC.sinal_opt)
-        dscnewt = self.DSC.temp[::int(resample)]
-        dscnewtk = self.DSC.tempK[::int(resample)]
-        dsz = len(dscnewt)-len(self.DSC.sinal_opt)
-
-        self.DSC.tempOPT = dscnewt[:-dsz]
-        self.DSC.tempKOPT = dscnewtk[:-dsz]
-        print(list(self.DSC.tempOPT-self.TGA.temp))
+        # print(max(abs(self.DSC.time-self.TGA.time)))
         # print('sinal OPT: ',self.TGA.sinal_opt)
         # print('ddt OPT: ',self.TGA.ddt_opt)
         # print('DSC OPT: ',self.DSC.sinal_opt)
@@ -610,11 +658,11 @@ class Ensaio(object):
         ax0.plot(obj.temp,obj.sinalNorm, 'k', label=obj.sName)
         ax0.plot(obj.temp,obj.sinal_optNorm, 'dimgray', ls=(0, (5, 10)),label=obj.sName+' - GA')
         if plotSpecies:
-            ax0.plot(obj.temp,obj.m_agua/obj.m0, 'b', label='agua')
-            ax0.plot(obj.temp,obj.m_C/obj.m0, label='C')
-            ax0.plot(obj.temp,obj.m_a/obj.m0, label='alpha')
-            ax0.plot(obj.temp,obj.m_b/obj.m0, label='beta')
-            ax0.plot(obj.temp,obj.m_ash/obj.m0, label='ash')
+            ax0.plot(obj.temp,obj.m_agua/obj.m0, 'b', label='$H_2O$')
+            ax0.plot(obj.temp,obj.m_C/obj.m0, label='DWF')
+            ax0.plot(obj.temp,obj.m_a/obj.m0, label='alpha-char')
+            ax0.plot(obj.temp,obj.m_b/obj.m0, label='beta-char')
+            ax0.plot(obj.temp,obj.m_ash/obj.m0, label='Ash')
         ax1.plot(obj.tempK,obj.sinalNorm, 'k', label=obj.sName)
         ax2.plot(obj.temp,-obj.ddt, 'r', label=r'$\frac{d}{dt} (%s)$' %obj.sName)
         label = r'$\frac{d}{dt} (%s) - GA$' %obj.sName
@@ -649,13 +697,13 @@ class Ensaio(object):
 
         ax1 = ax0.twiny()
 
-        ax0.plot(obj.temp,-obj.ddt_agua, 'b', label='agua')
-        ax0.plot(obj.temp,-obj.ddt_C, label='C')
-        ax0.plot(obj.temp,obj.ddt_a, label='alpha')
-        ax0.plot(obj.temp,obj.ddt_b, label='beta')
-        ax0.plot(obj.temp,obj.ddt_ash, label='ash')
+        ax0.plot(obj.temp,-obj.ddt_agua, 'b', label='$H_2O$')
+        ax0.plot(obj.temp,-obj.ddt_C, label='DWF')
+        ax0.plot(obj.temp,obj.ddt_a, label='alpha-char')
+        ax0.plot(obj.temp,obj.ddt_b, label='beta-char')
+        ax0.plot(obj.temp,obj.ddt_ash, label='Ash')
 
-        ax1.plot(obj.tempK,-obj.ddt_agua, 'b', label='agua')
+        ax1.plot(obj.tempK,-obj.ddt_agua, 'b', label='$H_2O$')
 
         h0,l0 = ax0.get_legend_handles_labels()
 
@@ -682,11 +730,9 @@ class Ensaio(object):
         ax1 = ax0.twiny()
 
         ax0.plot(obj.temp,obj.sinalNorm, 'k', label=obj.sName)
-        # ax0.plot(obj.temp,obj.sinalfilt*1e-6/obj.m0, 'r', label='filt')
-        ax0.plot(obj.tempOPT,obj.sinal_optNorm, 'dimgray', ls=(0, (5, 10)),label=obj.sName+' - GA')
+        ax0.plot(obj.temp,obj.sinal_optNorm, 'dimgray', ls=(0, (5, 10)),label=obj.sName+' - GA')
 
-        # ax1.plot(obj.tempK,obj.sinalNorm, 'k', label=obj.sName)
-        ax1.plot(obj.sinal_optNorm, 'k', label=obj.sName)
+        ax1.plot(obj.tempK, obj.sinalNorm, 'k', label=obj.sName)
 
         h0,l0 = ax0.get_legend_handles_labels()
 

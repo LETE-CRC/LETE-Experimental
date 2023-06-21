@@ -22,40 +22,44 @@ from pyTGADSCClasses import Ensaio
 # -- USER
 # ******************************************************************************
 
-name = 'Junco_10Cmin_n2'
+name = 'Aguape_10Cmin_n2'
 fdr = '10Cmin_n2/'
-exps = {'Junco1':{'TGA':fdr+'TGAI.txt',
-                  'DSC':fdr+'DSCI.txt'},
-        'Junco2':{'TGA':fdr+'TGAII.txt',
-                  'DSC':fdr+'DSCII.txt'},
-        'Junco3':{'TGA':fdr+'TGAIII.txt',
-                  'DSC':fdr+'DSCIII.txt'}}
+exps = {'Aguape1':{'TGA':fdr+'TGAI.txt',
+                   'DSC':fdr+'DSCI.txt'},
+        'Aguape2':{'TGA':fdr+'TGAII.txt',
+                   'DSC':fdr+'DSCII.txt'},
+        'Aguape3':{'TGA':fdr+'TGAIII.txt',
+                   'DSC':fdr+'DSCIII.txt'}}
 
 # limites otimizador
-xlim = {'agua':{'low':[1.5,1e7,60],
-                'up':[3.0,1e8,65]},
-        'C':{'low':[2.5,1e4,85],
-             'up':[3.0,1e7,110]},
-        'Cox':{'low':[1.5,1e6,80,0.5],
-               'up':[3.0,3e6,110,1.1]},
-        'alpha':{'low':[0.9,1e11,110,0.5],
-                 'up':[2.5,1e12,200,1.0]},
-        'beta':{'low':[0.9,1e2,100,0.9],
-                'up':[3.5,1e11,250,2.1]},
-        'ph2o':{'low':[0.06],
-                'up':[0.08]},
-        'ddts':{'low':[0.1,0.1,0.1,0.1],
-                'up':[1.0,1.0,0.4,0.4]}}
+# nk│Ak│Ek│nO2_k
+xlim = {'bd':{'low':[1,1e4,30],
+              'up':[1.5,1.1e4,50]},
+        'bp':{'low':[2,1e5,90],
+              'up':[3,1e7,100]},
+        'bo':{'low':[1,1e2,90,0.5],
+              'up':[2.0,1e7,110,1.1]},
+        'alpha':{'low':[0.9,8e12,180,0.5],
+                 'up':[1.1,1e13,200,2.0]},
+        'beta':{'low':[0.95,1e2,165,0.9],
+                'up':[1.1,1e11,200,1.1]},
+        'ph2o':{'low':[0.01],
+                'up':[0.09]},
+        'ddts':{'low':[0.15,0.45,0.2,0.15],
+                'up':[0.4,0.7,0.4,0.7]},
+        'h_i':{'low':[1e6,1e4,1e2,1e5,1e6],
+               'up':[4e6,1e7,1.5e7,1e7,1e8]}}
 
 # ******************************************************************************
 # -- MAIN --
 # ******************************************************************************
 
 teste = Ensaio(exps,name)
-# teste.optimize()
+teste.optimize(xlim)
 # err = teste.calcMass(x)
 # print(teste.optX)
-teste.plotOPTTemp(teste.TGA)
+teste.plotTGAOPTTemp(teste.TGA,plotSpecies=True)
+teste.plotDSCOPTTemp(teste.DSC)
 # teste.plotTime(teste.TGA)
 # teste.plotTemp(teste.TGA)
 # teste.plotTime(teste.DSC)
