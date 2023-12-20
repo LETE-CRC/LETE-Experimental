@@ -498,6 +498,13 @@ class Ensaio(object):
         txt += "\nIntegral EXP DSC time [MJ/kg]: " + str(self.DSC.integralExp*1e-3)
         txt += "\nIntegral OPT DSC time [MJ/kg]: " + str(self.DSC.integralOPT*1e-3)
 
+        dfMassa = pd.DataFrame(np.array(table1[1:]),columns=table1[0])
+        dfMassa.to_csv(self.Name+'-RES.csv',sep=';',index=False,mode='w')
+        dfOmega = pd.DataFrame(np.array(table2[1:]),columns=table2[0])
+        dfOmega.to_csv(self.Name+'-RES.csv',sep=';',index=False,mode='a')
+        dfDSC = pd.DataFrame(np.array(table3[1:]),columns=table3[0])
+        dfDSC.to_csv(self.Name+'-RES.csv',sep=';',index=False,mode='a')
+
         print(txt)
         with open(self.Name+'-RES.txt','w') as log:
             log.write(txt)
