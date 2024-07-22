@@ -334,6 +334,7 @@ class Ensaio(object):
     def __init__(self,exps,name,Tempinit=30):
         # BaseEnsaio.__init__(self)
         self.Name = name
+        self.exps = exps
         self.lb = []
         self.ub = []
 
@@ -343,6 +344,8 @@ class Ensaio(object):
         self.correctSize()
         self.TGA.sinalfilt = self.signalProcess(self.TGA, fc=0.005)
         self.DSC.sinalfilt = self.signalProcess(self.DSC, fc=0.01)
+        # Corrige DSC para iniciar do zero
+        self.DSC.sinalfilt -= self.DSC.sinalfilt[0]
         self.TGA.ddt = np.gradient(self.TGA.sinalfilt,self.TGA.time)  # kg/s
         self.DSC.ddt = np.gradient(self.DSC.sinalfilt,self.DSC.time)  # mW/mg/s *1e-3  # W/kg/s
         self.TGA.dTdt = np.gradient(self.TGA.tempK,self.TGA.time)  # K/s
@@ -861,3 +864,118 @@ class Ensaio(object):
         # plt.title(title)
         plt.legend(h0,l0)
         plt.savefig(self.Name+'-'+self.DSC.sName+'Temp-hOPT.png')
+
+    def plotAllTemp(self,tempRate='10'):
+        # -------------- Massa --------------
+        # Plot em funcao da Temperatura sem otimizacao
+        fig,ax0 = plt.subplots(figsize=(2*550*px,2*460*px))
+        fig.subplots_adjust(right=0.87,left=0.12)
+
+        explabel = 'Exp ' + str(tempRate) + 'K/min'
+        GAlabel = 'GA ' + str(tempRate) + 'K/min'
+
+        ax0.plot(self.TGA.tempK,self.TGA.sinalNorm, 'k', label=explabel)
+        #ax0.plot(self.TGA.tempK,self.TGA.sinal_optNorm, 'dimgray',
+        #         ls=(0, (5, 10)),label=GAlabel)
+
+        h0,l0 = ax0.get_legend_handles_labels()
+
+        ax0.set_ylabel('Mass fraction [-]')
+        ax0.set_xlabel('Temperature [K]')
+        ax0.xaxis.set_minor_locator(AutoMinorLocator(4))
+        ax0.yaxis.set_minor_locator(AutoMinorLocator(4))
+        ax0.set_xlim(300,900)
+
+        # title = str(self.Name).replace('_',r'\_')
+        # plt.title(title)
+        plt.legend(h0,l0)
+        plt.savefig(self.Name+'-'+self.TGA.sName+'Temp-mass.png')
+
+        # -------------- Derivada --------------
+        # Plot em funcao da Temperatura
+        fig,ax0 = plt.subplots(figsize=(2*550*px,2*460*px))
+        fig.subplots_adjust(right=0.87,left=0.12)
+
+        ax0.plot(self.TGA.tempK,-self.TGA.ddt, 'k', label=explabel)
+        # label = r'$\frac{d}{dt} (%s) - GA$' %self.TGA.sName
+        #ax0.plot(self.TGA.tempK,self.TGA.ddt_opt, 'dimgray', ls=(0, (5, 10)),label=GAlabel)
+
+        h0,l0 = ax0.get_legend_handles_labels()
+
+        ax0.set_xlabel('Temperature [K]')
+        txt = r'Mass fraction Derivative [kg/s]'
+        ax0.set_ylabel(txt)
+        ax0.xaxis.set_minor_locator(AutoMinorLocator(4))
+        ax0.yaxis.set_minor_locator(AutoMinorLocator(4))
+        ax0.set_xlim(300,900)
+
+        # title = str(self.Name).replace('_',r'\_')
+        # plt.title(title)
+        plt.legend(h0,l0)
+        plt.savefig(self.Name+'-'+self.TGA.sName+'Temp-dt.png')
+
+        # -------------- DDTs --------------
+        # Plot em funcao da Temperatura
+        '''fig,ax0 = plt.subplots(figsize=(2*550*px,2*460*px))
+        fig.subplots_adjust(right=0.87,left=0.12)
+
+        # ax0.plot(self.TGA.tempK,-self.TGA.ddt_agua, 'b', label='$H_2O$')
+        ax0.plot(self.TGA.tempK,-self.TGA.ddt_C,'k', label='DWF', ls='dotted')
+        ax0.plot(self.TGA.tempK,self.TGA.ddt_b,'k', label=r'$\beta$ - char', ls='solid')
+        ax0.plot(self.TGA.tempK,self.TGA.ddt_a,'k', label=r'$\alpha$ - char', ls=(5, (10, 3)))
+        ax0.plot(self.TGA.tempK,self.TGA.ddt_ash,'k', label='Ash', ls='dashdot')
+
+        h0,l0 = ax0.get_legend_handles_labels()
+
+        txt = r'Net Mass Source Term [kg/s]'
+        ax0.set_ylabel(txt)
+        ax0.set_xlabel('Temperature [K]')
+        ax0.xaxis.set_minor_locator(AutoMinorLocator(4))
+        ax0.yaxis.set_minor_locator(AutoMinorLocator(4))
+        ax0.set_xlim(300,900)
+
+        # title = str(self.Name).replace('_',r'\_')
+        # plt.title(title)
+        plt.legend(h0,l0)
+        plt.savefig(self.Name+'-'+self.TGA.sName+'Temp-omegaOPT.png')'''
+
+        # -------------- Potencia termica --------------
+        # Plot em funcao da Temperatura
+        fig,ax0 = plt.subplots(figsize=(2*550*px,2*460*px))
+        fig.subplots_adjust(right=0.87,left=0.12)
+
+        ax0.plot(self.DSC.tempK,self.DSC.sinalNorm, 'k', label=explabel)
+        # ax0.plot(self.DSC.tempK,self.DSC.sinal_optNorm, 'dimgray', ls=(0, (5, 10)),
+        #         label=GAlabel)
+
+        h0,l0 = ax0.get_legend_handles_labels()
+
+        ax0.set_ylabel('Thermal Power per initial mass [mW/mg]')
+        ax0.set_xlabel('Temperature [K]')
+        ax0.xaxis.set_minor_locator(AutoMinorLocator(4))
+        ax0.yaxis.set_minor_locator(AutoMinorLocator(4))
+        ax0.set_xlim(300,900)
+
+        # title = str(self.Name).replace('_',r'\_')
+        # plt.title(title)
+        plt.legend(h0,l0)
+        plt.savefig(self.Name+'-'+self.DSC.sName+'Temp-h.png')
+
+    def plotExpsTemp(self,obj):
+        # Plot em funcao da Temperatura de todas as execucoes de experimentos especificados no dicionario de entrada
+        fig,ax0 = plt.subplots(figsize=(2*550*px,2*460*px))
+        fig.subplots_adjust(right=0.87,left=0.12)
+
+        for i,k in enumerate(self.exps.keys()):
+            ax0.plot(obj.temp,obj.Exps[i][5], label=k,lw=2)
+
+        h0,l0 = ax0.get_legend_handles_labels()
+
+        ax0.set_xlabel('Temperature [C]')
+        ax0.set_ylabel(obj.sName+' ['+obj.sunit+']')
+
+        ax0.xaxis.set_minor_locator(AutoMinorLocator(4))
+        ax0.yaxis.set_minor_locator(AutoMinorLocator(4))
+
+        plt.legend(h0,l0)
+        plt.savefig(self.Name+'-'+obj.sName+'ExpsTemp.png')
